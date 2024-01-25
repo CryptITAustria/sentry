@@ -1,7 +1,8 @@
 import Vorpal from "vorpal";
 import axios from "axios";
 import { ethers } from 'ethers';
-import { config, createBlsKeyPair, getAssertion, getSignerFromPrivateKey, listenForAssertions, submitAssertionToReferee, EventListenerError } from "@sentry/core";
+import { config, createBlsKeyPair, getAssertion, getSignerFromPrivateKey, listenForAssertions, submitAssertionToReferee, EventListenerError, RollupAdminLogicAbi } from "@sentry/core";
+import { RefereeAbi } from "@sentry/core";
 
 type PromptBodyKey = "secretKeyPrompt" | "walletKeyPrompt" | "webhookUrlPrompt";
 
@@ -150,6 +151,115 @@ const startListener = async (commandInstance: Vorpal.CommandInstance) => {
     })
 }
 
+const MAX_NUM_BLOCKS_TO_SCAN_FOR_MISSED_ASSERTIONS = 1_000_000;
+
+// TODO: extract to own file
+async function findMissedAssertion(blockRange: number = 1000, latestBlock?: number): Promise<{ nodeNum: number | undefined, message: string }> {
+
+    const provider = new ethers.JsonRpcProvider("https://arb-goerli.g.alchemy.com/v2/WNOJEZxrhn3a0PzKUVEZgeRJqxOL7brv");
+
+    const contract = new ethers.Contract(
+        config.rollupAddress,
+        RollupAdminLogicAbi,
+        provider
+    )
+
+    // const contract = new ethers.Contract(
+    //     "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE",
+    //     ShibaAbi,
+    //     cachedSigner.signer
+    // )
+
+    // const contract = new ethers.Contract(
+    //     "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+    //     TetherAbi,
+    //     cachedSigner.signer
+    // )
+
+    if (!latestBlock) {
+        latestBlock = await provider.getBlockNumber();
+        if (!latestBlock) {
+            return { nodeNum: undefined, message: "Could not get latest block number" }
+        }
+    }
+
+    let fromBlock: number = latestBlock - blockRange;
+    let toBlock: number = latestBlock;
+    let events: any[] = [];
+    let found = false;
+    let blockCount = 0;
+
+    while (fromBlock > 0 && !found && blockCount < MAX_NUM_BLOCKS_TO_SCAN_FOR_MISSED_ASSERTIONS) {
+        let eventFilter = contract.filters.NodeConfirmed();
+        try {
+            console.log("fromBlock", fromBlock, "toBlock", toBlock);
+            let newEvents = await contract.queryFilter(eventFilter, fromBlock, toBlock);
+
+            events.push(...newEvents); // Accumulate events
+            if (newEvents.length > 0) {
+                found = true;
+            }
+        } catch (error) {
+            // commandInstance.log(`Error querying events: ${error}`);
+            console.log("Error in while", error);
+            return { nodeNum: undefined, message: "Error searching for event" }
+        }
+
+        toBlock = fromBlock - 1;
+        fromBlock = Math.max(fromBlock - blockRange, 0); // Decrement by 1000, but don't go below 0
+        blockCount += blockRange;
+    }
+
+    if (events.length > 0) {
+        return { nodeNum: events[events.length - 1].topics[1], message: `Found last assertion event in block: ${events[events.length - 1].blockNumber}` };
+    } else {
+        return { nodeNum: undefined, message: "Could not find an event" }
+    }
+}
+
+async function processMissedAssertions(commandInstance: Vorpal.CommandInstance) {
+    //TODO create getMissedAssertionId(commandInstance) last nodeNum == assertionId
+    commandInstance.log(`[${new Date().toISOString()}] Searching for missed assertions...`);
+    const missedAssertion = await findMissedAssertion(50000);
+    commandInstance.log(`[${new Date().toISOString()}] ${missedAssertion.message}`);
+
+    if (missedAssertion.nodeNum) {
+        //TODO check the last assertionId if it is already submitted keccak256(abi.encodePacked(_assertionId, rollupAddress));
+
+
+        let assertionNode
+        try {
+            assertionNode = await getAssertion(missedAssertion.nodeNum);
+            commandInstance.log(`[${new Date().toISOString()}] Assertion node: ${assertionNode.createdAtBlock}.`);
+        } catch (error) {
+            commandInstance.log(`[${new Date().toISOString()}] Invalid assertion node: ${error}`);
+            return;
+        }
+        const provider = new ethers.JsonRpcProvider("https://arb-goerli.g.alchemy.com/v2/WNOJEZxrhn3a0PzKUVEZgeRJqxOL7brv");
+
+        const contract = new ethers.Contract(
+            config.rollupAddress,
+            RollupAdminLogicAbi,
+            provider
+        )
+        const comboHash = ethers.sha256(ethers.solidityPacked(['bytes32', 'address'], [missedAssertion.nodeNum, config.rollupAddress]));
+        commandInstance.log(`[${new Date().toISOString()}] comboHash: ${comboHash}`);
+        
+
+        //TODO get isSubmitted from contract, for found last assertionId/nodeNum
+        const isSubmitted = await contract.rollupAssertionTracker(comboHash);
+        commandInstance.log(`[${new Date().toISOString()}] isSubmitted: ${isSubmitted}`);
+        
+
+        // try {
+        //     await submitAssertionToReferee(cachedSecretKey, missedAssertion.nodeNum, assertionNode, cachedSigner.signer);
+        //     commandInstance.log(`[${new Date().toISOString()}] Submitted missed challenge: nodeNum ${missedAssertion.nodeNum}.`);
+        // } catch (error) {
+        //     commandInstance.log(`[${new Date().toISOString()}] Last found challenge is already submitted: ${error}`);
+        // }
+    }
+}
+
 
 /**
  * Starts a runtime of the challenger.
@@ -178,6 +288,17 @@ export function bootChallenger(cli: Vorpal) {
             const assertionCheckInterval = setInterval(() => {
                 checkTimeSinceLastAssertion(lastAssertionTime, commandInstance);
             }, 5 * 60 * 1000);
+
+            processMissedAssertions(commandInstance);
+
+            // TODO: Check contract.submissions[_challengeId][_nodeLicenseId].submitted
+            //TODO if not submitted enter this assertionId and submit it
+            //TODO call onAssertionConfirmedCb if missed assertionId, 
+
+            // const refereeContract = new ethers.Contract(config.refereeAddress, RefereeAbi, cachedSigner.signer);
+            // refereeContract.submissions()
+
+
 
             for (let i = 0; i <= NUM_ASSERTION_LISTENER_RETRIES; i++) {
                 commandInstance.log(`[${new Date().toISOString()}] The challenger is now listening for assertions...`);
