@@ -33,18 +33,25 @@ export interface NodeLicenseInformation {
     status: string | NodeLicenseStatus;
 }
 
+interface publicNodeBucketInformation {
+    assertion: number,
+    blockHash: string,
+    sendRoot: string,
+    confirmHash: string
+}
+
 export type NodeLicenseStatusMap = Map<bigint, NodeLicenseInformation>;
 
-async function getBucketAssertionId(blockHash: string) {
+async function getPublicNodeFromBucket(blockHash: string) {
     const url = `https://storage.googleapis.com/xai-sentry-public-node/assertions/${blockHash}.json`;
 
-    let assertionIdFromBucket: number | undefined = undefined;
+    let publicNodeBucket: publicNodeBucketInformation | undefined = undefined;
 
     try {
         const response = await axios.get(url);
 
         if (response.status === 200) {
-            assertionIdFromBucket = response.data.assertion;
+            publicNodeBucket = response.data;
         } else {
             console.error(`First try of HTTP request failed with status code: ${response.status}`);
         }
@@ -59,7 +66,7 @@ async function getBucketAssertionId(blockHash: string) {
             const response = await axios.get(url);
 
             if (response.status === 200) {
-                assertionIdFromBucket = response.data.assertion;
+                publicNodeBucket = response.data.assertion;
             } else {
                 console.error(`Retry failed with status code: ${response.status}`);
             }
@@ -67,7 +74,7 @@ async function getBucketAssertionId(blockHash: string) {
             console.error(`Retry failed with error: ${error}`);
         }
     }
-    return assertionIdFromBucket;
+    return publicNodeBucket;
 }
 
 /**
@@ -83,7 +90,7 @@ export async function operatorRuntime(
     statusCallback: (status: NodeLicenseStatusMap) => void = (_) => { },
     logFunction: (log: string) => void = (_) => { },
     operatorOwners?: string[],
-    onAssertionMissmatch: (alert: string) => void = (_) => { }
+    onAssertionMissmatch: (bucket: publicNodeBucketInformation, challenge: Challenge, alert: string) => void = (_) => { }
 ): Promise<() => Promise<void>> {
 
     logFunction(`[${new Date().toISOString()}] Booting operator runtime.`);
@@ -280,16 +287,16 @@ export async function operatorRuntime(
     const challengeNumberMap: { [challengeNumber: string]: boolean } = {};
     async function listenForChallengesCallback(challengeNumber: bigint, challenge: Challenge, event?: any, blockHash?: string) {
 
-        let assertionIdBucket: number | undefined;
+        let publicNodeBucket: publicNodeBucketInformation | undefined;
 
         if (blockHash) {
-            assertionIdBucket = await getBucketAssertionId(blockHash);
+            publicNodeBucket = await getPublicNodeFromBucket(blockHash);
         }
-        if (assertionIdBucket) {
-            if (assertionIdBucket !== Number(challenge.assertionId)) {
-                console.log("AssertionIds", Number(challenge.assertionId), assertionIdBucket);
+        if (publicNodeBucket) {
+            if (publicNodeBucket.assertion !== Number(challenge.assertionId)) {
+                console.log("AssertionIds", Number(challenge.assertionId), publicNodeBucket);
                 logFunction(`[${new Date().toISOString()}] Missmatch in blockHash: ${blockHash}.`);
-                onAssertionMissmatch(`Missmatch in blockHash: ${blockHash} with PublicNodeAssertionId: ${assertionIdBucket} and ChallengeAssertionId: ${challenge.assertionId}`)
+                onAssertionMissmatch(publicNodeBucket, challenge, `Missmatch in blockHash: ${blockHash} with PublicNodeAssertionId: ${publicNodeBucket} and ChallengeAssertionId: ${challenge.assertionId}`)
             }
         } else {
             logFunction(`[${new Date().toISOString()}] Could not compare to PublicNode in blockHash: ${blockHash}.`);
