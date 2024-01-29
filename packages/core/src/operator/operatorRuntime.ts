@@ -16,6 +16,7 @@ import {
     version
 } from "../index.js";
 import { retry } from "../index.js";
+import axios from "axios";
 
 export enum NodeLicenseStatus {
     WAITING_IN_QUEUE = "Booting Operator For Key", // waiting to do an action, but in a queue
@@ -34,6 +35,41 @@ export interface NodeLicenseInformation {
 
 export type NodeLicenseStatusMap = Map<bigint, NodeLicenseInformation>;
 
+async function getBucketAssertionId(blockHash: string) {
+    const url = `https://storage.googleapis.com/xai-sentry-public-node/assertions/${blockHash}.json`;
+
+    let assertionIdFromBucket: number | undefined = undefined;
+
+    try {
+        const response = await axios.get(url);
+
+        if (response.status === 200) {
+            assertionIdFromBucket = response.data.assertion;
+        } else {
+            console.error(`First try of HTTP request failed with status code: ${response.status}`);
+        }
+    } catch (error) {
+        console.error(`HTTP request error: ${error}`);
+        console.log('Retrying in 1 minute...');
+
+        // Wait for 1 minute before retrying
+        await new Promise((resolve) => setTimeout(resolve, 60000));
+
+        try {
+            const response = await axios.get(url);
+
+            if (response.status === 200) {
+                assertionIdFromBucket = response.data.assertion;
+            } else {
+                console.error(`Retry failed with status code: ${response.status}`);
+            }
+        } catch (error) {
+            console.error(`Retry failed with error: ${error}`);
+        }
+    }
+    return assertionIdFromBucket;
+}
+
 /**
  * Operator runtime function.
  * @param {ethers.Signer} signer - The signer.
@@ -44,9 +80,10 @@ export type NodeLicenseStatusMap = Map<bigint, NodeLicenseInformation>;
  */
 export async function operatorRuntime(
     signer: ethers.Signer,
-    statusCallback: (status: NodeLicenseStatusMap) => void = (_) => {},
-    logFunction: (log: string) => void = (_) => {},
+    statusCallback: (status: NodeLicenseStatusMap) => void = (_) => { },
+    logFunction: (log: string) => void = (_) => { },
     operatorOwners?: string[],
+    onAssertionMissmatch: (alert: string) => void = (_) => { }
 ): Promise<() => Promise<void>> {
 
     logFunction(`[${new Date().toISOString()}] Booting operator runtime.`);
@@ -173,7 +210,7 @@ export async function operatorRuntime(
             }
 
             // check to see if this nodeLicense has already submitted, if we have, then go to next license
-            const [{submitted}] = await retry(async () => await getSubmissionsForChallenges([challengeNumber], nodeLicenseId));
+            const [{ submitted }] = await retry(async () => await getSubmissionsForChallenges([challengeNumber], nodeLicenseId));
             if (submitted) {
                 logFunction(`[${new Date().toISOString()}] Sentry Key ${nodeLicenseId} has submitted for challenge ${challengeNumber} by another node. If multiple nodes are running, this message can be ignored.`);
                 nodeLicenseStatusMap.set(nodeLicenseId, {
@@ -211,7 +248,7 @@ export async function operatorRuntime(
         safeStatusCallback();
 
         // check to see if the owner of teh license is KYC'd
-        const [{isKycApproved}] = await retry(async () => await checkKycStatus([nodeLicenseStatusMap.get(nodeLicenseId)!.ownerPublicKey]));
+        const [{ isKycApproved }] = await retry(async () => await checkKycStatus([nodeLicenseStatusMap.get(nodeLicenseId)!.ownerPublicKey]));
 
         if (isKycApproved) {
             logFunction(`[${new Date().toISOString()}] Requesting esXAI reward for challenge '${challengeNumber}'.`);
@@ -241,7 +278,22 @@ export async function operatorRuntime(
 
     // start a listener for new challenges
     const challengeNumberMap: { [challengeNumber: string]: boolean } = {};
-    async function listenForChallengesCallback(challengeNumber: bigint, challenge: Challenge, event?: any) {
+    async function listenForChallengesCallback(challengeNumber: bigint, challenge: Challenge, event?: any, blockHash?: string) {
+
+        let assertionIdBucket: number | undefined;
+
+        if (blockHash) {
+            assertionIdBucket = await getBucketAssertionId(blockHash);
+        }
+        if (assertionIdBucket) {
+            if (assertionIdBucket !== Number(challenge.assertionId)) {
+                console.log("AssertionIds", Number(challenge.assertionId), assertionIdBucket);
+                logFunction(`[${new Date().toISOString()}] Missmatch in blockHash: ${blockHash}.`);
+                onAssertionMissmatch(`Missmatch in blockHash: ${blockHash} with PublicNodeAssertionId: ${assertionIdBucket} and ChallengeAssertionId: ${challenge.assertionId}`)
+            }
+        } else {
+            logFunction(`[${new Date().toISOString()}] Could not compare to PublicNode in blockHash: ${blockHash}.`);
+        }
 
         if (challenge.openForSubmissions) {
             logFunction(`[${new Date().toISOString()}] Received new challenge with number: ${challengeNumber}.`);
