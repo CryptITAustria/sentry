@@ -85,6 +85,7 @@ async function compareWithCDN(blockHash: string, challenge: Challenge) {
 }
 
 async function getPublicNodeFromBucket(blockHash: string) {
+    //TODO add to config
     const url = `https://storage.googleapis.com/xai-sentry-public-node/assertions/${blockHash}.json`;
 
     let publicNodeBucket: publicNodeBucketInformation | undefined = undefined;
