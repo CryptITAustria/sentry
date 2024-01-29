@@ -7,7 +7,7 @@ interface ResilientEventListenerArgs {
     abi: InterfaceAbi,
     eventName: string,
     log?: (value: string, ...values: string[]) => void;
-    callback?: (log: LogDescription | null, err?: EventListenerError) => void;
+    callback?: (log: LogDescription | null, err?: EventListenerError, blockHash?: string) => void;
 }
 
 export interface EventListenerError {
@@ -39,7 +39,7 @@ export function resilientEventListener(args: ResilientEventListenerArgs) {
     let isStoppedManually = false;
 
     const log = args.log ? args.log : (value: string, ...values: string[]) => { };
-    const callback = args.callback ? args.callback : (log: LogDescription | null, error: any | undefined) => { };
+    const callback = args.callback ? args.callback : (log: LogDescription | null) => { };
 
     const connect = () => {
         try {
@@ -79,7 +79,7 @@ export function resilientEventListener(args: ResilientEventListenerArgs) {
                 if (keepAliveInterval) clearInterval(keepAliveInterval);
                 if (pingTimeout) clearTimeout(pingTimeout);
                 ws = null;
-                
+
                 if (!isStoppedManually) {
                     setTimeout(connect, 1000);
                     log(`[${new Date().toISOString()}] WebSocket closed, reconnecting automatically`);
@@ -110,7 +110,7 @@ export function resilientEventListener(args: ResilientEventListenerArgs) {
                         const log = parsedData.params.result;
                         const event = contract.interface.parseLog(log);
                         log(`[${new Date().toISOString()}] Received event ${event?.name}: ${event?.args}`);
-                        callback(event);
+                        callback(event, undefined, log.blockHash);
                     }
 
                 } catch (error) {
