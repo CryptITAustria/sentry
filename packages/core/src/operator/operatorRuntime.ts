@@ -40,7 +40,49 @@ interface publicNodeBucketInformation {
     confirmHash: string
 }
 
+
+
 export type NodeLicenseStatusMap = Map<bigint, NodeLicenseInformation>;
+
+async function compareWithCDN(blockHash: string, challenge: Challenge) {
+
+    let attempt = 0;
+    let success = false;
+    let publicNodeBucket: publicNodeBucketInformation | undefined;
+
+    while (attempt < 3 && !success) {
+        try {
+            publicNodeBucket = await getPublicNodeFromBucket(blockHash);
+
+            if (publicNodeBucket) {
+                success = true;
+            } else {
+                console.error(`Attempt ${attempt + 1} failed, retrying...`);
+                attempt++;
+            }
+        } catch (error) {
+            console.error(`Error in attempt ${attempt + 1}: ${error}`);
+            attempt++;
+        }
+    }
+
+    if (!success) {
+        console.error('Failed to retrieve public node bucket after 3 attempts');
+        return;
+    }
+
+    //TODO compare CDN data with challenge
+    if (publicNodeBucket) {
+        if (publicNodeBucket.assertion !== Number(challenge.assertionId) &&
+            publicNodeBucket.confirmHash == challenge.assertionStateRootOrConfirmData) {
+
+            return { mismatch: true, publicNodeBucket, challenge };
+        } else {
+            return { mismatch: false, publicNodeBucket, challenge }
+        }
+    }
+
+}
 
 async function getPublicNodeFromBucket(blockHash: string) {
     const url = `https://storage.googleapis.com/xai-sentry-public-node/assertions/${blockHash}.json`;
@@ -90,7 +132,7 @@ export async function operatorRuntime(
     statusCallback: (status: NodeLicenseStatusMap) => void = (_) => { },
     logFunction: (log: string) => void = (_) => { },
     operatorOwners?: string[],
-    onAssertionMissmatch: (bucket: publicNodeBucketInformation, challenge: Challenge, alert: string) => void = (_) => { }
+    onAssertionMissmatch: (publicDataData: publicNodeBucketInformation, challenge: Challenge, alert: string) => void = (_) => { }
 ): Promise<() => Promise<void>> {
 
     logFunction(`[${new Date().toISOString()}] Booting operator runtime.`);
@@ -287,19 +329,19 @@ export async function operatorRuntime(
     const challengeNumberMap: { [challengeNumber: string]: boolean } = {};
     async function listenForChallengesCallback(challengeNumber: bigint, challenge: Challenge, event?: any, blockHash?: string) {
 
-        let publicNodeBucket: publicNodeBucketInformation | undefined;
-
         if (blockHash) {
-            publicNodeBucket = await getPublicNodeFromBucket(blockHash);
-        }
-        if (publicNodeBucket) {
-            if (publicNodeBucket.assertion !== Number(challenge.assertionId)) {
-                console.log("AssertionIds", Number(challenge.assertionId), publicNodeBucket);
-                logFunction(`[${new Date().toISOString()}] Missmatch in blockHash: ${blockHash}.`);
-                onAssertionMissmatch(publicNodeBucket, challenge, `Missmatch in blockHash: ${blockHash} with PublicNodeAssertionId: ${publicNodeBucket} and ChallengeAssertionId: ${challenge.assertionId}`)
-            }
-        } else {
-            logFunction(`[${new Date().toISOString()}] Could not compare to PublicNode in blockHash: ${blockHash}.`);
+            compareWithCDN(blockHash, challenge)
+                .then(result => {
+                    if (result && result.mismatch) {
+                        // Handle the mismatch case here if needed
+                        onAssertionMissmatch(result.publicNodeBucket, result.challenge, `Missmatch in blockhash: ${blockHash}`)
+                    } else {
+                        logFunction(`[${new Date().toISOString()}] Comparison was successful between PublicNode and Challenge in blockhash: ${blockHash}.`);
+                    }
+                })
+                .catch(error => {
+                    // TODO handle error case
+                });
         }
 
         if (challenge.openForSubmissions) {
