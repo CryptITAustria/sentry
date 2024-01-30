@@ -1,5 +1,12 @@
 import Vorpal from "vorpal";
-import { getSignerFromPrivateKey, operatorRuntime, listOwnersForOperator } from "@sentry/core";
+import { getSignerFromPrivateKey, operatorRuntime, listOwnersForOperator, Challenge } from "@sentry/core";
+
+interface publicNodeBucketInformation {
+    assertion: number,
+    blockHash: string,
+    sendRoot: string,
+    confirmHash: string
+}
 
 /**
  * Starts a runtime of the operator.
@@ -63,8 +70,9 @@ export function bootOperator(cli: Vorpal) {
             stopFunction = await operatorRuntime(
                 signer,
                 undefined,
-                (log) => this.log(log),
+                (log: string) => this.log(log),
                 selectedOwners,
+                (publicNodeData: publicNodeBucketInformation, challenge: Challenge, message: string) => this.log(`${publicNodeData}, ${challenge}, ${message}`)
             );
 
             return new Promise((resolve, reject) => { }); // Keep the command alive

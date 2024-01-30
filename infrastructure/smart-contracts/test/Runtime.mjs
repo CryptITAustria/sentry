@@ -2,6 +2,11 @@ import {listOwnersForOperator, operatorRuntime, listNodeLicenses} from "@sentry/
 import {winningHashForNodeLicense0} from "./AssertionData.mjs";
 import { expect } from "chai";
 
+
+function missmatchInAssertion(publicNodeData, challenge, message) {
+	alert(`${publicNodeData}, ${challenge}, ${message}`);
+}
+
 /**
  * @title Runtime Tests
  * @dev Test Nodes running alonside the challenger
@@ -37,7 +42,10 @@ export function RuntimeTests(deployInfrastructure) {
                                 // set the nodeLicense to true, meaning it was connected
                                 nodeLicenseMap.set(key, true);
                             }
-                        });
+                        }),
+                        undefined,
+                        undefined,
+                        missmatchInAssertion;
                     });
 
                     // if not all the values in the map are true, then reject

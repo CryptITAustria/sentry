@@ -44,7 +44,7 @@ interface publicNodeBucketInformation {
 
 export type NodeLicenseStatusMap = Map<bigint, NodeLicenseInformation>;
 
-async function compareWithCDN(blockHash: string, challenge: Challenge) {
+async function compareWithCDN(blockHash: string, challenge: Challenge, logFunction: (log: string) => void) {
 
     let attempt = 0;
     let success = false;
@@ -57,26 +57,26 @@ async function compareWithCDN(blockHash: string, challenge: Challenge) {
             if (publicNodeBucket) {
                 success = true;
             } else {
-                console.error(`Attempt ${attempt + 1} failed, retrying...`);
+                logFunction(`Attempt ${attempt + 1} failed, retrying...`);
                 attempt++;
             }
         } catch (error) {
-            console.error(`Error in attempt ${attempt + 1}: ${error}`);
+            logFunction(`Error in attempt ${attempt + 1}: ${error}`);
             attempt++;
+            //TODO setTimeout
         }
     }
 
     if (!success) {
-        console.error('Failed to retrieve public node bucket after 3 attempts');
+        logFunction('Failed to retrieve public node bucket after 3 attempts');
         return;
     }
 
     //TODO compare CDN data with challenge
     if (publicNodeBucket) {
-        if (publicNodeBucket.assertion !== Number(challenge.assertionId) &&
-            publicNodeBucket.confirmHash == challenge.assertionStateRootOrConfirmData) {
+        if (publicNodeBucket.assertion !== Number(challenge.assertionId) && publicNodeBucket.confirmHash !== challenge.assertionStateRootOrConfirmData) {
+            return { mismatch: true, publicNodeBucket, challenge, message: "Missmatch between PublicNode and Challenge." };
 
-            return { mismatch: true, publicNodeBucket, challenge };
         } else {
             return { mismatch: false, publicNodeBucket, challenge }
         }
@@ -100,22 +100,6 @@ async function getPublicNodeFromBucket(blockHash: string) {
         }
     } catch (error) {
         console.error(`HTTP request error: ${error}`);
-        console.log('Retrying in 1 minute...');
-
-        // Wait for 1 minute before retrying
-        await new Promise((resolve) => setTimeout(resolve, 60000));
-
-        try {
-            const response = await axios.get(url);
-
-            if (response.status === 200) {
-                publicNodeBucket = response.data.assertion;
-            } else {
-                console.error(`Retry failed with status code: ${response.status}`);
-            }
-        } catch (error) {
-            console.error(`Retry failed with error: ${error}`);
-        }
     }
     return publicNodeBucket;
 }
@@ -133,7 +117,7 @@ export async function operatorRuntime(
     statusCallback: (status: NodeLicenseStatusMap) => void = (_) => { },
     logFunction: (log: string) => void = (_) => { },
     operatorOwners?: string[],
-    onAssertionMissmatch: (publicDataData: publicNodeBucketInformation, challenge: Challenge, alert: string) => void = (_) => { }
+    onAssertionMissmatch: (publicNodeData: publicNodeBucketInformation, challenge: Challenge, message: string) => void = (_) => { }
 ): Promise<() => Promise<void>> {
 
     logFunction(`[${new Date().toISOString()}] Booting operator runtime.`);
@@ -331,17 +315,17 @@ export async function operatorRuntime(
     async function listenForChallengesCallback(challengeNumber: bigint, challenge: Challenge, event?: any, blockHash?: string) {
 
         if (blockHash) {
-            compareWithCDN(blockHash, challenge)
+            compareWithCDN(blockHash, challenge, logFunction)
                 .then(result => {
                     if (result && result.mismatch) {
                         // Handle the mismatch case here if needed
-                        onAssertionMissmatch(result.publicNodeBucket, result.challenge, `Missmatch in blockhash: ${blockHash}`)
+                        onAssertionMissmatch(result.publicNodeBucket, result.challenge, `${result.message} Missmatch found in blockhash: ${blockHash}`)
                     } else {
                         logFunction(`[${new Date().toISOString()}] Comparison was successful between PublicNode and Challenge in blockhash: ${blockHash}.`);
                     }
                 })
                 .catch(error => {
-                    // TODO handle error case
+                    // TODO handle error case in while loop
                 });
         }
 
