@@ -107,10 +107,10 @@ export function resilientEventListener(args: ResilientEventListenerArgs) {
                         log(`[${new Date().toISOString()}] Health check complete, subscription to '${args.eventName}' is still active.`)
                         if (pingTimeout) clearInterval(pingTimeout);
                     } else if (parsedData?.method === 'eth_subscription' && parsedData.params.subscription === subscriptionId) {
-                        const log = parsedData.params.result;
-                        const event = contract.interface.parseLog(log);
+                        const logData = parsedData.params.result;
+                        const event = contract.interface.parseLog(logData);
                         log(`[${new Date().toISOString()}] Received event ${event?.name}: ${event?.args}`);
-                        callback(event, undefined, log.blockHash);
+                        callback(event, undefined, logData.blockHash);
                     }
 
                 } catch (error) {
