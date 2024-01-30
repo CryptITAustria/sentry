@@ -74,7 +74,7 @@ async function compareWithCDN(blockHash: string, challenge: Challenge, logFuncti
 
     //TODO compare CDN data with challenge
     if (publicNodeBucket) {
-        if (publicNodeBucket.assertion !== Number(challenge.assertionId) && publicNodeBucket.confirmHash !== challenge.assertionStateRootOrConfirmData) {
+        if (publicNodeBucket.assertion !== Number(challenge.assertionId) || publicNodeBucket.confirmHash !== challenge.assertionStateRootOrConfirmData) {
             return { mismatch: true, publicNodeBucket, challenge, message: "Missmatch between PublicNode and Challenge." };
 
         } else {
@@ -309,7 +309,7 @@ export async function operatorRuntime(
         }
 
     }
-
+    
     // start a listener for new challenges
     const challengeNumberMap: { [challengeNumber: string]: boolean } = {};
     async function listenForChallengesCallback(challengeNumber: bigint, challenge: Challenge, event?: any, blockHash?: string) {
@@ -326,6 +326,7 @@ export async function operatorRuntime(
                 })
                 .catch(error => {
                     // TODO handle error case in while loop
+                    logFunction(`[${new Date().toISOString()}] Could not fetch PublicNodeData from bucket in blockhash: ${blockHash}.`);
                 });
         }
 

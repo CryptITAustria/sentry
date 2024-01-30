@@ -72,7 +72,7 @@ export function bootOperator(cli: Vorpal) {
                 undefined,
                 (log: string) => this.log(log),
                 selectedOwners,
-                (publicNodeData: publicNodeBucketInformation, challenge: Challenge, message: string) => this.log(`${publicNodeData}, ${challenge}, ${message}`)
+                (publicNodeData: publicNodeBucketInformation, challenge: Challenge, message: string) => this.log(`[${new Date().toISOString()}] ${JSON.stringify(publicNodeData)}, in challenge AssertionId: ${challenge.assertionId}. ${message}`)
             );
 
             return new Promise((resolve, reject) => { }); // Keep the command alive
