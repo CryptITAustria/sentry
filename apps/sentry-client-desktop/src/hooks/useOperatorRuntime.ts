@@ -5,14 +5,14 @@ import {useEffect, useState} from "react";
 import {useStorage} from "@/features/storage";
 
 
-interface publicNodeBucketInformation {
+interface PublicNodeBucketInformation {
     assertion: number,
     blockHash: string,
     sendRoot: string,
     confirmHash: string
 }
 
-function missmatchInAssertion(publicNodeData: publicNodeBucketInformation, challenge: Challenge, message: string) {
+function missmatchInAssertion(publicNodeData: PublicNodeBucketInformation, challenge: Challenge, message: string) {
 	alert(`${publicNodeData}, ${challenge}, ${message}`);
 }
 
