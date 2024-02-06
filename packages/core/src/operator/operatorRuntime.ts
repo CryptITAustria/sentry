@@ -43,7 +43,7 @@ interface PublicNodeBucketInformation {
 }
 
 async function getPublicNodeFromBucket(confirmHash: string) {
-    const url = `https://storage.googleapis.com/xai-sentry-public-node/assertions/${confirmHash.toLowerCase()}.json`;
+    const url = `https://sentry-public-node.xai.games/assertions/${confirmHash.toLowerCase()}.json`;
     const response = await axios.get(url);
 
     if (response.status === 200) {
