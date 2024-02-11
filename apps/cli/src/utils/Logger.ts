@@ -20,11 +20,22 @@ const getLogger = () => {
 
         transports.push(
             new DailyRotateFile({
+                dirname: LOG_PATH,
+                filename: 'combined',
+                datePattern: 'yyyyMMDD',
+                extension: '.log',
+                maxFiles: '3d'
+            }),
+        )
+
+        transports.push(
+            new DailyRotateFile({
                 dirname: path.join(LOG_PATH, 'errors'),
                 filename: 'error',
                 datePattern: 'yyyyMMDD',
                 level: 'error',
-                extension: '.log'
+                extension: '.log',
+                maxFiles: '14d'
             })
         )
 
