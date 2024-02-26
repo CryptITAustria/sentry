@@ -57,25 +57,25 @@ export async function getReferralRewards(fromTimestamp?: number, toTimestamp?: n
     let logs: ethers.Log[] = [];
 
     // Fetch the logs in batches of 1000 blocks
-    for (let i = startBlock; i <= endBlock; i += blockRange) {
-        const blockFilter: Filter | FilterByBlockHash = {
-            topics: [referalRewardTopic],
-            fromBlock: i,
-            toBlock: Math.min(i + blockRange - 1, endBlock),
-            address: config.nodeLicenseAddress
-        };
+    // for (let i = startBlock; i <= endBlock; i += blockRange) {
+    //     const blockFilter: Filter | FilterByBlockHash = {
+    //         topics: [referalRewardTopic],
+    //         fromBlock: i,
+    //         toBlock: Math.min(i + blockRange - 1, endBlock),
+    //         address: config.nodeLicenseAddress
+    //     };
 
-        // Get the logs for the ReferralReward events in the current block range
-        const batchLogs = await provider.getLogs(blockFilter);
+    //     // Get the logs for the ReferralReward events in the current block range
+    //     const batchLogs = await provider.getLogs(blockFilter);
 
-        // Add the batch logs to the total logs
-        logs = [...logs, ...batchLogs];
+    //     // Add the batch logs to the total logs
+    //     logs = [...logs, ...batchLogs];
 
-        // Call the callback function if it is provided
-        if (callback) {
-            callback(batchLogs, blockFilter.fromBlock, blockFilter.toBlock);
-        }
-    }
+    //     // Call the callback function if it is provided
+    //     if (callback) {
+    //         callback(batchLogs, blockFilter.fromBlock, blockFilter.toBlock);
+    //     }
+    // }
 
     // Parse the logs
     for (const log of logs) {

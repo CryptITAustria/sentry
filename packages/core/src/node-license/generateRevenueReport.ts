@@ -17,25 +17,25 @@ export async function generateRevenueReport() {
     const currentBlockNumber = await provider.getBlockNumber();
     let promoCodes: Array<[string, bigint | undefined]> = [];
 
-    for(let i = blockNumber; i <= currentBlockNumber; i += eventBlockStep) {
-        const promoCodeCreatedLogs = await provider.getLogs({
-            fromBlock: i,
-            toBlock: Math.min(i + eventBlockStep - 1, currentBlockNumber),
-            address: config.nodeLicenseAddress,
-            topics: [promoCodeCreatedTopic],
-        });
+    // for(let i = blockNumber; i <= currentBlockNumber; i += eventBlockStep) {
+    //     const promoCodeCreatedLogs = await provider.getLogs({
+    //         fromBlock: i,
+    //         toBlock: Math.min(i + eventBlockStep - 1, currentBlockNumber),
+    //         address: config.nodeLicenseAddress,
+    //         topics: [promoCodeCreatedTopic],
+    //     });
 
-        console.log(`Processing blocks from ${i} to ${Math.min(i + eventBlockStep - 1, currentBlockNumber)}. Remaining blocks: ${currentBlockNumber - i}`);
+    //     console.log(`Processing blocks from ${i} to ${Math.min(i + eventBlockStep - 1, currentBlockNumber)}. Remaining blocks: ${currentBlockNumber - i}`);
 
-        const newPromoCodes = promoCodeCreatedLogs.map(log => {
-            const mutableLog = { ...log, topics: [...log.topics] };
-            const parsedLog = nodeLicenseContract.interface.parseLog(mutableLog);
-            return parsedLog?.args?.promoCode;
-        }).filter(promoCode => promoCode !== undefined);
+    //     const newPromoCodes = promoCodeCreatedLogs.map(log => {
+    //         const mutableLog = { ...log, topics: [...log.topics] };
+    //         const parsedLog = nodeLicenseContract.interface.parseLog(mutableLog);
+    //         return parsedLog?.args?.promoCode;
+    //     }).filter(promoCode => promoCode !== undefined);
 
-        // Add the new promo codes to the array with an undefined value
-        promoCodes = [...promoCodes, ...newPromoCodes.map((promoCode: string) => [promoCode, undefined] as [string, bigint | undefined])];
-    }
+    //     // Add the new promo codes to the array with an undefined value
+    //     promoCodes = [...promoCodes, ...newPromoCodes.map((promoCode: string) => [promoCode, undefined] as [string, bigint | undefined])];
+    // }
 
     // iterate over all promo codes and get how much they have gotten lifetime
     for (let i = 0 ; i < promoCodes.length; i++) {
@@ -75,28 +75,28 @@ export async function generateRevenueReport() {
         }
     }
 
-    for(let i = blockNumber; i <= currentBlockNumber; i += logBlockStep) {
-        const transferLogs = await getTransferLogs(i, currentBlockNumber, logBlockStep);
+    // for(let i = blockNumber; i <= currentBlockNumber; i += logBlockStep) {
+    //     const transferLogs = await getTransferLogs(i, currentBlockNumber, logBlockStep);
 
-        // Parse each log, and only add the logs that came from the zero address
-        const newTransferTransactionHashes = transferLogs
-            .filter(log => {
-                const mutableLog = { ...log, topics: [...log.topics] };
-                const parsedLog = nodeLicenseContract.interface.parseLog(mutableLog);
-                return parsedLog?.args?.from === zeroAddress;
-            })
-            .map(log => log.transactionHash);
+    //     // Parse each log, and only add the logs that came from the zero address
+    //     const newTransferTransactionHashes = transferLogs
+    //         .filter(log => {
+    //             const mutableLog = { ...log, topics: [...log.topics] };
+    //             const parsedLog = nodeLicenseContract.interface.parseLog(mutableLog);
+    //             return parsedLog?.args?.from === zeroAddress;
+    //         })
+    //         .map(log => log.transactionHash);
 
-        if(newTransferTransactionHashes.length > 0) {
-            console.log(`Found transfers at blocks: ${newTransferTransactionHashes.length} transfers`);
-        }
+    //     if(newTransferTransactionHashes.length > 0) {
+    //         console.log(`Found transfers at blocks: ${newTransferTransactionHashes.length} transfers`);
+    //     }
 
-        // Add the new transaction hashes to the array and remove duplicates
-        transferTransactionHashes = Array.from(new Set([...transferTransactionHashes, ...newTransferTransactionHashes]));
+    //     // Add the new transaction hashes to the array and remove duplicates
+    //     transferTransactionHashes = Array.from(new Set([...transferTransactionHashes, ...newTransferTransactionHashes]));
 
-        // Show logs of progress of how many blocks have been queried so far and how many left.
-        console.log(`Processed blocks from ${i} to ${Math.min(i + logBlockStep - 1, currentBlockNumber)}. Remaining blocks: ${currentBlockNumber - i}`);
-    }
+    //     // Show logs of progress of how many blocks have been queried so far and how many left.
+    //     console.log(`Processed blocks from ${i} to ${Math.min(i + logBlockStep - 1, currentBlockNumber)}. Remaining blocks: ${currentBlockNumber - i}`);
+    // }
 
     async function traceTransactions(txHashes: string[]) {
         const promises = txHashes.map(async (txHash) => {

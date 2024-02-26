@@ -1,7 +1,16 @@
 import Vorpal from "vorpal";
 import axios from "axios";
 import { ethers } from 'ethers';
-import { config, createBlsKeyPair, getAssertion, getSignerFromPrivateKey, listenForAssertions, submitAssertionToReferee, EventListenerError } from "@sentry/core";
+import { config, createBlsKeyPair, getAssertion, getSignerFromPrivateKey, listenForAssertions, submitAssertionToReferee, EventListenerError, getProvider, RefereeAbi, retry, getSubmissionsForChallenges, submitAssertionToChallenge, NodeLicenseAbi, claimReward } from "@sentry/core";
+
+import fs from "fs";
+import crypto from 'crypto';
+
+function generateRandomHexHash() {
+    // 32 bytes is 256 bits, and each byte is represented by two hex characters
+    const randomBytes = crypto.randomBytes(32);
+    return "0x" + randomBytes.toString('hex');
+}
 
 type PromptBodyKey = "secretKeyPrompt" | "walletKeyPrompt" | "webhookUrlPrompt";
 
@@ -33,6 +42,7 @@ let cachedSigner: {
     address: string,
     signer: ethers.Signer
 };
+// let cachedOperator: ethers.Signer;
 let cachedWebhookUrl: string | undefined;
 let cachedSecretKey: string;
 let lastAssertionTime: number;
@@ -166,39 +176,206 @@ export function bootChallenger(cli: Vorpal) {
 
             const commandInstance = this;
 
-            if (!cachedSigner || !cachedSecretKey) {
-                await initCli(commandInstance);
-            }
+            const reportPath = `C:\\SEPOLIA_TEST_CHALLENGES\\sepolia-test-challenges-${Date.now()}.json`;
 
             // Listen for process termination and call the handler
             process.on('SIGINT', async () => {
                 commandInstance.log(`[${new Date().toISOString()}] The challenger has been terminated manually.`);
-                await sendNotification(`The challenger has been terminated manually.`, commandInstance);
                 process.exit();
             });
 
             // Check if submit assertion has not been run for over 1 hour and 10 minutes
-            const assertionCheckInterval = setInterval(() => {
-                checkTimeSinceLastAssertion(lastAssertionTime, commandInstance);
-            }, 5 * 60 * 1000);
+            // const assertionCheckInterval = setInterval(() => {
+            //     checkTimeSinceLastAssertion(lastAssertionTime, commandInstance);
+            // }, 5 * 60 * 1000);
 
-            for (; currentNumberOfRetries <= NUM_ASSERTION_LISTENER_RETRIES; currentNumberOfRetries++) {
-                commandInstance.log(`[${new Date().toISOString()}] The challenger is now listening for assertions...`);
-                await startListener(commandInstance);
+            // Get the provider
+            const provider = getProvider();
 
-                if (currentNumberOfRetries + 1 <= NUM_ASSERTION_LISTENER_RETRIES) {
-                    await (new Promise((resolve) => {
-                        setTimeout(resolve, 3000);
-                    }))
-                    commandInstance.log(`[${new Date().toISOString()}] Challenger restarting with ${NUM_ASSERTION_LISTENER_RETRIES - (currentNumberOfRetries + 1)} attempts left.`);
-                    sendNotification(`Challenger restarting with ${NUM_ASSERTION_LISTENER_RETRIES - (currentNumberOfRetries + 1)} attempts left.`, commandInstance);
+            // Create an instance of the Referee contract
+            const refereeContract = new ethers.Contract(config.refereeAddress, RefereeAbi, provider);
+            // Create an instance of the NodeLicense contract
+            const nodeLicenseContract = new ethers.Contract(config.nodeLicenseAddress, NodeLicenseAbi, provider);
+
+            const fakeChallenger = getSignerFromPrivateKey("0x83e391bdc88132de5b6bc84c72a7def379d4e02c79016106857cbe9040792649");
+            const cachedChallenger = fakeChallenger.signer;
+
+            const fakeOperator = getSignerFromPrivateKey("0xc8014ec914046082063e268da1d8f609a22b8425e1225442ff24fbee034cdfaa");
+            const cachedOperator = fakeOperator.signer;
+
+            // Get the count of challenges
+
+            // Create an instance of the Referee contract
+            const refereeWriteChallenger = new ethers.Contract(config.refereeAddress, RefereeAbi, cachedChallenger);
+
+            const testKeyHolder = [
+                "0xb5dE6BA52417d138f475E3acfE5789C3dF2ba534",
+                "0x0ef797CAF6031520a119017FB8e3A64e07294eD7",
+                "0xd59C357A34D753Ae77EF5eF914ED32BD7aB4AE2F",
+                "0x1e7238C45C80e45b5D33b3b6D647427146bE1366",
+                "0x54E9CFF378dAF818D082fE9764e15470f34058D2",
+            ]
+            // const testKeys = [231n, 232n, 233n, 234n, 239n];
+            const testKeys: bigint[] = [];
+            const testKeysBoostFactors: bigint[] = [];
+
+            const testData: {
+                totalChallengesRun: number,
+                testChallengeIds: number[],
+                keyData: {
+                    [keyId: string]: {
+                        owner: string,
+                        winCount: number,
+                        stakedAmount: string,
+                        boostFactor: number,
+                        wonChallenges: number[],
+                    }
+                }
+
+            } = { keyData: {}, totalChallengesRun: 0, testChallengeIds:[] }
+
+            console.log("Loading test key owner data");
+            for (let i = 0; i < testKeyHolder.length; i++) {
+                const firstKeyId = await nodeLicenseContract.tokenOfOwnerByIndex(testKeyHolder[i], 0);
+                testKeys.push(firstKeyId);
+                const stakedAmount = await refereeContract.stakedAmounts(testKeyHolder[i]);
+                const boostFactor = await refereeContract.getBoostFactor(stakedAmount);
+                testKeysBoostFactors.push(boostFactor);
+                testData.keyData[firstKeyId.toString()] = {
+                    owner: testKeyHolder[i],
+                    winCount: 0,
+                    stakedAmount: stakedAmount.toString(),
+                    boostFactor: boostFactor.toString(),
+                    wonChallenges: []
+                }
+                console.log(
+                    "Loaded data for key owner",
+                    testKeyHolder[i],
+                    "firstKey: " + firstKeyId.toString(),
+                    "stakedAmount: " + stakedAmount.toString(),
+                    "boostFactor: " + boostFactor.toString()
+                );
+            }
+
+            let counter = Number(await refereeContract.challengeCounter());
+            console.log("Current ChallengeCount = " + counter);
+            let lastChallenge = {
+                assertionId: BigInt(counter + 15),
+                predecessorAssertionId: BigInt(counter + 14),
+                confirmData: generateRandomHexHash(),
+                assertionTimestamp: Math.floor(Date.now() / 1000),
+                challengerSignedHash: generateRandomHexHash()
+            }
+
+            console.log("Submit next test challenge");
+            // Submit the challenge to the Referee contract
+            const tx = await refereeWriteChallenger.submitChallenge(
+                lastChallenge.assertionId,
+                lastChallenge.predecessorAssertionId,
+                lastChallenge.confirmData,
+                lastChallenge.assertionTimestamp,
+                lastChallenge.challengerSignedHash,
+            );
+            console.log("Submitted test challenge, waiting for confirm...");
+            await tx.wait(1);
+            console.log("Confirm awaited");
+
+            counter++;
+
+            const RUNS_FOR_TEST = 5000;
+
+            while (testData.totalChallengesRun < RUNS_FOR_TEST) {
+
+                testData.totalChallengesRun++;
+
+                try {
+
+                    const winnerKeys: bigint[] = [];
+                    const currentChallengeId = (await refereeContract.challengeCounter()) - BigInt(1);
+                    testData.testChallengeIds.push(Number(currentChallengeId))
+                    console.log("Starting check reward for currentChallenge", currentChallengeId.toString());
+
+                    for (let i = 0; i < testKeys.length; i++) {
+                        console.log("Check if key can win for challenge ", currentChallengeId.toString(), testKeys[i].toString());
+                        let payoutEligible = false;
+                        try {
+                            [payoutEligible] = await refereeContract.createAssertionHashAndCheckPayout(
+                                testKeys[i],
+                                currentChallengeId,
+                                BigInt(testData.keyData[testKeys[i].toString()].boostFactor),
+                                lastChallenge.confirmData,
+                                lastChallenge.challengerSignedHash
+                            );
+                        } catch (error) {
+                            console.error("Failed to createAssertionHashAndCheckPayout", error);
+                            // continue;
+                        }
+
+                        if (payoutEligible) {
+                            console.log("Key won, will submit assertion", testKeys[i].toString());
+                            winnerKeys.push(testKeys[i]);
+                            testData.keyData[testKeys[i].toString()].winCount++;
+                            testData.keyData[testKeys[i].toString()].wonChallenges.push(Number(currentChallengeId));
+
+                            try {
+                                console.log("Submitting assertion to won challenge", testKeys[i].toString(), currentChallengeId.toString());
+                                await submitAssertionToChallenge(
+                                    testKeys[i],
+                                    currentChallengeId,
+                                    lastChallenge.confirmData,
+                                    cachedOperator
+                                )
+
+                            } catch (err) {
+                                console.error("Error on submitAssertion", err);
+                                // continue;
+                            }
+                        }
+                    }
+
+                    console.log("Create next challenge")
+                    lastChallenge = {
+                        assertionId: BigInt(counter + 15),
+                        predecessorAssertionId: BigInt(counter + 14),
+                        confirmData: generateRandomHexHash(),
+                        assertionTimestamp: Math.floor(Date.now() / 1000),
+                        challengerSignedHash: generateRandomHexHash()
+                    }
+                    counter++;
+                    const tx = await refereeWriteChallenger.submitChallenge(
+                        lastChallenge.assertionId,
+                        lastChallenge.predecessorAssertionId,
+                        lastChallenge.confirmData,
+                        lastChallenge.assertionTimestamp,
+                        lastChallenge.challengerSignedHash,
+                    );
+
+                    await tx.wait(1);
+                    // await new Promise((resolve) => {
+                    //     setTimeout(resolve, 1000);
+                    // })
+                    console.log("Create next challenge awaited");
+
+                    if (winnerKeys.length > 0) {
+                        console.log("Claiming for winnerKeys", winnerKeys.join(", "));
+                        for (let i = 0; i < winnerKeys.length; i++) {
+                            try {
+                                await claimReward(winnerKeys[i], currentChallengeId, cachedOperator)
+                                console.log("Claimed for ", winnerKeys[i].toString());
+                            } catch (error) {
+                                console.error("Failed to claim reward", winnerKeys[i], error)
+                            }
+                        }
+                    }
+
+                } catch (error) {
+                    console.error(`[${new Date().toISOString()}] Error: ${(error as Error).message}`);
+                    continue;
                 }
 
             }
 
-            clearInterval(assertionCheckInterval);
-            commandInstance.log(`[${new Date().toISOString()}] Challenger has stopped after ${NUM_ASSERTION_LISTENER_RETRIES} attempts.`);
-            sendNotification(`Challenger has stopped after ${NUM_ASSERTION_LISTENER_RETRIES} attempts.`, commandInstance);
+            fs.writeFileSync(reportPath, JSON.stringify(testData, null, 2));
 
             return Promise.resolve(); //End boot-challenger command here after NUM_ASSERTION_LISTENER_RETRIES restarts
         });
