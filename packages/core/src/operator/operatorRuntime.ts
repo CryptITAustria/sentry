@@ -1,7 +1,6 @@
 import { ethers } from "ethers";
 import {
     Challenge,
-    RefereeAbi,
     claimReward,
     config,
     getMintTimestamp,
@@ -15,10 +14,13 @@ import {
     getProvider,
     version,
     Submission,
-    getBoostFactor
+    getBoostFactor,
+    getChallengeCount,
+    getChallenge
 } from "../index.js";
 import { retry } from "../index.js";
 import axios from "axios";
+import fs from "fs";
 
 export enum NodeLicenseStatus {
     WAITING_IN_QUEUE = "Booting Operator For Key", // waiting to do an action, but in a queue
@@ -44,6 +46,15 @@ export type PublicNodeBucketInformation = {
     confirmHash: string
 }
 
+type CachedData = {
+    [challengeId: string]: {
+        [nodeLicenseId: string]: {
+            hasSubmission: boolean,
+            hasClaimed?: boolean
+        }
+    }
+}
+
 let cachedSigner: ethers.Signer;
 let cachedLogger: (log: string) => void;
 let safeStatusCallback: () => void;
@@ -53,6 +64,8 @@ const mintTimestamps: { [nodeLicenseId: string]: bigint } = {};
 const nodeLicenseStatusMap: NodeLicenseStatusMap = new Map();
 const challengeNumberMap: { [challengeNumber: string]: boolean } = {};
 let cachedBoostFactor: { [ownerAddress: string]: bigint } = {};
+const LOCAL_CACHE_PATH = "./operatorCache.json";
+let cachedChallengeData: CachedData;
 
 async function getPublicNodeFromBucket(confirmHash: string) {
     const url = `https://sentry-public-node.xai.games/assertions/${confirmHash.toLowerCase()}.json`;
@@ -304,6 +317,17 @@ async function listenForChallengesCallback(challengeNumber: bigint, challenge: C
     }
 }
 
+const saveLocalCache = () => {
+    fs.writeFileSync(LOCAL_CACHE_PATH, JSON.stringify(cachedChallengeData));
+}
+
+const loadLocalCache = () => {
+    if (!fs.existsSync(LOCAL_CACHE_PATH)) {
+        cachedChallengeData = {};
+    }
+    cachedChallengeData = JSON.parse(fs.readFileSync(LOCAL_CACHE_PATH, 'utf8')) as CachedData;
+}
+
 /**
  * Operator runtime function.
  * @param {ethers.Signer} signer - The signer.
@@ -320,6 +344,13 @@ export async function operatorRuntime(
     onAssertionMissMatch: (publicNodeData: PublicNodeBucketInformation | undefined, challenge: Challenge, message: string) => void = (_) => { }
 
 ): Promise<() => Promise<void>> {
+
+
+    if (!fs.existsSync(LOCAL_CACHE_PATH)) {
+        fs.writeFileSync(LOCAL_CACHE_PATH, "{}");
+    }
+
+    loadLocalCache();
 
     cachedLogger = logFunction;
     cachedSigner = signer;
@@ -391,6 +422,48 @@ export async function operatorRuntime(
     logFunction(`Started listener for new challenges.`);
 
     logFunction(`Processing open challenges.`);
+
+    //We need to check how many challenges exists
+    //Then we check how many challenges we have in local cache
+    const currentChallengeCount = await getChallengeCount();
+    const localChallengeCount = Object.keys(cachedChallengeData).length;
+
+    //Check if we have won on current challenge
+    const currentChallenge = await getChallenge(BigInt(currentChallengeCount - 1));
+    processNewChallenge(BigInt(currentChallengeCount - 1), currentChallenge);
+
+    logFunction(`Loading challenges not in local cache, local count: ${localChallengeCount}, onChain count: ${currentChallengeCount}`);
+    //Fetch all challenges we don't have in cache
+    for (let i = localChallengeCount; i < currentChallengeCount; i++) {
+        logFunction("Loaded challenge " + i);
+        cachedChallengeData[i.toString()] = {};
+    }
+
+    saveLocalCache();
+    logFunction(`Checking past challenges...`);
+    for (let i = 1; i < currentChallengeCount; i++) {
+        //We check each challenge
+        //Check each key we are operating on
+        //check if we know if key submitted,
+        //When key submitted, check if key claimed
+
+        const challengeNumber = BigInt(i);
+        for (const nodeLicenseId of nodeLicenseIds) {
+        
+            //Did we alreydy check that this key has submitted an assertion?
+            //If not we need to check
+
+            //If we know that this key has submitted, check if we already claimed
+            //If not, we need to initiate the claim
+
+
+        
+        }
+
+
+    }
+
+
     await listChallenges(false, listenForChallengesCallback);
 
     logFunction(`The operator has finished booting. The operator is running successfully. esXAI will accrue every few days.`);
