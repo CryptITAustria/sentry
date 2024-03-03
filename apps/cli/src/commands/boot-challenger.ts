@@ -260,8 +260,8 @@ export function bootChallenger(cli: Vorpal) {
             let counter = Number(await refereeContract.challengeCounter());
             console.log("Current ChallengeCount = " + counter);
             let lastChallenge = {
-                assertionId: BigInt(counter + 15),
-                predecessorAssertionId: BigInt(counter + 14),
+                assertionId: BigInt(counter + 150),
+                predecessorAssertionId: BigInt(counter + 149),
                 confirmData: generateRandomHexHash(),
                 assertionTimestamp: Math.floor(Date.now() / 1000),
                 challengerSignedHash: generateRandomHexHash()
@@ -282,7 +282,7 @@ export function bootChallenger(cli: Vorpal) {
 
             counter++;
 
-            const RUNS_FOR_TEST = 5000;
+            const RUNS_FOR_TEST = 10000;
 
             while (testData.totalChallengesRun < RUNS_FOR_TEST) {
 
@@ -335,8 +335,8 @@ export function bootChallenger(cli: Vorpal) {
 
                     console.log("Create next challenge")
                     lastChallenge = {
-                        assertionId: BigInt(counter + 15),
-                        predecessorAssertionId: BigInt(counter + 14),
+                        assertionId: BigInt(counter + 150),
+                        predecessorAssertionId: BigInt(counter + 149),
                         confirmData: generateRandomHexHash(),
                         assertionTimestamp: Math.floor(Date.now() / 1000),
                         challengerSignedHash: generateRandomHexHash()
