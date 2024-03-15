@@ -37,6 +37,14 @@ contract StakingPool is IStakingPool, AccessControlUpgradeable {
     uint16[3] pendingShares;
     uint256 updateSharesTimestamp;
 
+    address[] public waitingQueue;
+    mapping(uint256 => uint256) public queueIndexToAmount;
+    mapping(address => uint256) public userQueueAmount;
+    mapping(uint256 => uint256) public challangeToQueueIndex;
+
+    uint256 public lastProcessedIndex;
+    uint256 public lastProcessedChallenge;
+
     uint256[500] __gap;
 
     function initialize(
@@ -227,6 +235,29 @@ contract StakingPool is IStakingPool, AccessControlUpgradeable {
 
         keyBucket.processAccount(user);
         esXaiStakeBucket.processAccount(user);
+    }
+
+    function processQueue() internal {
+        //Get the current challenge and calculate whats the challenge we will should process to
+        // Everybody that submitted at challenge 100 should only be able to claim any rewards that came after challenge 100, 
+        // the rewards for 100 will come at challenge 101, so it has to be 102 for people to start earning a share from the rewards.
+        uint256 processUntilChallenge = Referee5(refereeAddress)
+            .challengeCounter() - 3;
+
+        uint256 indexToChallange = challangeToQueueIndex[processUntilChallenge];
+
+        //Everybody that staked after processUntilChallenge should get tracker tokens now
+        uint256 prcessUntil = lastProcessedIndex + 50;
+
+        if (prcessUntil > indexToChallange) {
+            prcessUntil = indexToChallange;
+        }
+
+        //We need to only process all in queue before processUntilChallenge
+        for (; lastProcessedIndex < prcessUntil; lastProcessedIndex++) {
+            address userInQueue = waitingQueue[lastProcessedIndex];
+            uint256 amountInQueue = queueIndexToAmount[lastProcessedIndex];
+        }
     }
 
     function _getUndistributedClaimAmount(
