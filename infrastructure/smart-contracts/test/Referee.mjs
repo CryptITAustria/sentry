@@ -1,9 +1,9 @@
-import {expect, assert} from "chai";
-import {loadFixture} from "@nomicfoundation/hardhat-network-helpers";
-import {winningHashForNodeLicense0} from "./AssertionData.mjs";
-import {Contract} from "ethers";
+import { expect, assert } from "chai";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { winningHashForNodeLicense0 } from "./AssertionData.mjs";
+import { Contract } from "ethers";
 
-export 	async function getStateRoots(count) {
+export async function getStateRoots(count) {
 	let results = [];
 	for (let i = 0n; i < count; i++) {
 		const successorStateRoot = `0x${i.toString(16).padStart(64, '0')}`;
@@ -62,7 +62,7 @@ export function RefereeTests(deployInfrastructure) {
 	return function () {
 
 		it("Check to make sure the setChallengerPublicKey actually saves the value and only callable as an admin", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin, challenger} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin, challenger } = await loadFixture(deployInfrastructure);
 			const newPublicKey = "0x1234567890abcdef";
 			await referee.connect(refereeDefaultAdmin).setChallengerPublicKey(newPublicKey);
 			const savedPublicKey = await referee.challengerPublicKey();
@@ -74,14 +74,14 @@ export function RefereeTests(deployInfrastructure) {
 		})
 
 		it("Check isApprovedForOperator function", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin } = await loadFixture(deployInfrastructure);
 			await referee.connect(refereeDefaultAdmin).setApprovalForOperator(kycAdmin.address, true);
 			const isApproved = await referee.isApprovedForOperator(refereeDefaultAdmin.address, kycAdmin.address);
 			assert.equal(isApproved, true, "The operator is not approved");
 		})
 
 		it("Check setApprovalForOperator function", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin } = await loadFixture(deployInfrastructure);
 			await referee.connect(refereeDefaultAdmin).setApprovalForOperator(kycAdmin.address, true);
 			let isApproved = await referee.isApprovedForOperator(refereeDefaultAdmin.address, kycAdmin.address);
 			assert.equal(isApproved, true, "The operator is not approved");
@@ -91,42 +91,42 @@ export function RefereeTests(deployInfrastructure) {
 		})
 
 		it("Check getOperatorAtIndex function", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin } = await loadFixture(deployInfrastructure);
 			await referee.connect(refereeDefaultAdmin).setApprovalForOperator(kycAdmin.address, true);
 			const operator = await referee.getOperatorAtIndex(refereeDefaultAdmin.address, 0);
 			assert.equal(operator, kycAdmin.address, "The operator at index does not match");
 		})
 
 		it("Check getOperatorCount function", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin } = await loadFixture(deployInfrastructure);
 			await referee.connect(refereeDefaultAdmin).setApprovalForOperator(kycAdmin.address, true);
 			const count = await referee.getOperatorCount(refereeDefaultAdmin.address);
 			assert.equal(count, BigInt(1), "The operator count does not match");
 		})
 
 		it("Check getOwnerForOperatorAtIndex function", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin } = await loadFixture(deployInfrastructure);
 			await referee.connect(refereeDefaultAdmin).setApprovalForOperator(kycAdmin.address, true);
 			const owner = await referee.getOwnerForOperatorAtIndex(kycAdmin.address, 0);
 			assert.equal(owner, refereeDefaultAdmin.address, "The owner at index does not match");
 		})
 
 		it("Check getOwnerCountForOperator function", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin } = await loadFixture(deployInfrastructure);
 			await referee.connect(refereeDefaultAdmin).setApprovalForOperator(kycAdmin.address, true);
 			const count = await referee.getOwnerCountForOperator(kycAdmin.address);
 			assert.equal(count, BigInt(1), "The owner count does not match");
 		})
 
 		it("Check addKycWallet function", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin } = await loadFixture(deployInfrastructure);
 			await referee.connect(kycAdmin).addKycWallet(kycAdmin.address);
 			const isApproved = await referee.isKycApproved(kycAdmin.address);
 			assert.equal(isApproved, true, "The wallet is not KYC approved");
 		})
 
 		it("Check removeKycWallet function", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin } = await loadFixture(deployInfrastructure);
 			await referee.connect(kycAdmin).addKycWallet(kycAdmin.address);
 			await referee.connect(kycAdmin).removeKycWallet(kycAdmin.address);
 			const isApproved = await referee.isKycApproved(kycAdmin.address);
@@ -134,14 +134,14 @@ export function RefereeTests(deployInfrastructure) {
 		})
 
 		it("Check isKycApproved function", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin } = await loadFixture(deployInfrastructure);
 			await referee.connect(kycAdmin).addKycWallet(kycAdmin.address);
 			const isApproved = await referee.isKycApproved(kycAdmin.address);
 			assert.equal(isApproved, true, "The wallet is not KYC approved");
 		})
 
 		it("Check getKycWalletAtIndex function", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin } = await loadFixture(deployInfrastructure);
 			await referee.connect(kycAdmin).addKycWallet(kycAdmin.address);
 			const count = await referee.getKycWalletCount();
 			const wallet = await referee.getKycWalletAtIndex(count - BigInt(1));
@@ -149,7 +149,7 @@ export function RefereeTests(deployInfrastructure) {
 		})
 
 		it("Check getKycWalletCount function", async function () {
-			const {referee, refereeDefaultAdmin, kycAdmin} = await loadFixture(deployInfrastructure);
+			const { referee, refereeDefaultAdmin, kycAdmin } = await loadFixture(deployInfrastructure);
 			const initialCount = await referee.getKycWalletCount();
 			await referee.connect(kycAdmin).addKycWallet(kycAdmin.address);
 			const finalCount = await referee.getKycWalletCount();
@@ -195,16 +195,16 @@ export function RefereeTests(deployInfrastructure) {
 		// })
 
 		it("Check calculateChallengeEmissionAndTier", async function () {
-			const {referee, xai, xaiMinter} = await loadFixture(deployInfrastructure);
+			const { referee, xai, xaiMinter } = await loadFixture(deployInfrastructure);
 			const maxSupply = await xai.MAX_SUPPLY();
 
 			let tokensToMint = [ethers.parseEther('1250000000')];
-			for (let i = 0; i < 23; i++) {
+			for (let i = 0; i < 22; i++) {
 				tokensToMint.push(tokensToMint[i] / BigInt(2));
 			}
 
 			let challengeAllocations = [BigInt('71347031963470319634703')];
-			for (let i = 0; i < 23; i++) {
+			for (let i = 0; i < 22; i++) {
 				challengeAllocations.push(challengeAllocations[i] / BigInt(2));
 			}
 
@@ -236,17 +236,17 @@ export function RefereeTests(deployInfrastructure) {
 		})
 
 		it("Check calculateChallengeEmissionAndTier with a variance", async function () {
-			const {referee, xai, xaiMinter} = await loadFixture(deployInfrastructure);
+			const { referee, xai, xaiMinter } = await loadFixture(deployInfrastructure);
 			this.timeout(1000 * 60 * 20);
 			const maxSupply = await xai.MAX_SUPPLY();
 
 			let tokensToMint = [ethers.parseEther('1250000000')];
-			for (let i = 0; i < 23; i++) {
+			for (let i = 0; i < 22; i++) {
 				tokensToMint.push(tokensToMint[i] / BigInt(2));
 			}
 
 			let challengeAllocations = [BigInt('71347031963470319634703')];
-			for (let i = 0; i < 23; i++) {
+			for (let i = 0; i < 22; i++) {
 				challengeAllocations.push(challengeAllocations[i] / BigInt(2));
 			}
 
@@ -275,7 +275,7 @@ export function RefereeTests(deployInfrastructure) {
 		})
 
 		it("Check submitChallenge function", async function () {
-			const {referee, challenger, xai, esXai, publicKeyHex} = await loadFixture(deployInfrastructure);
+			const { referee, challenger, xai, esXai, publicKeyHex } = await loadFixture(deployInfrastructure);
 			const maxSupply = await xai.MAX_SUPPLY();
 			const initialChallengeCounter = await referee.challengeCounter();
 			const initialTotalSupply = await referee.getCombinedTotalSupply();
@@ -311,7 +311,7 @@ export function RefereeTests(deployInfrastructure) {
 		})
 
 		it("Check that submitting a second challenge will close the previous challenge", async function () {
-			const {referee, challenger, publicKeyHex} = await loadFixture(deployInfrastructure);
+			const { referee, challenger, publicKeyHex } = await loadFixture(deployInfrastructure);
 			const initialChallengeCounter = await referee.challengeCounter();
 
 			// Submit the first challenge
@@ -343,7 +343,7 @@ export function RefereeTests(deployInfrastructure) {
 		});
 
 		it("Check that addr1 submitting a winning hash receives the allocated reward", async function () {
-			const {referee, operator, challenger, esXai, addr1} = await loadFixture(deployInfrastructure);
+			const { referee, operator, challenger, esXai, addr1 } = await loadFixture(deployInfrastructure);
 
 			const winningStateRoot = await findWinningStateRoot(referee, [1], 0);
 
@@ -357,7 +357,7 @@ export function RefereeTests(deployInfrastructure) {
 			);
 
 			// check to see the challenge is open for submissions
-			const {openForSubmissions} = await referee.getChallenge(0);
+			const { openForSubmissions } = await referee.getChallenge(0);
 			expect(openForSubmissions).to.be.eq(true);
 
 			// Submit a winning hash
@@ -413,7 +413,7 @@ export function RefereeTests(deployInfrastructure) {
 		});
 
 		it("Check that an assertion for a challenge, can't be submitted more than once", async function () {
-			const {referee, challenger} = await loadFixture(deployInfrastructure);
+			const { referee, challenger } = await loadFixture(deployInfrastructure);
 
 			// Submit the same challenge twice
 			await referee.connect(challenger).submitChallenge(
@@ -436,7 +436,7 @@ export function RefereeTests(deployInfrastructure) {
 		})
 
 		it("Check that only a challenger can can submit a challenge", async function () {
-			const {referee, operator, challenger} = await loadFixture(deployInfrastructure);
+			const { referee, operator, challenger } = await loadFixture(deployInfrastructure);
 			const expectedRevertMessageChallenger = `AccessControl: account ${operator.address.toLowerCase()} is missing role ${await referee.CHALLENGER_ROLE()}`;
 
 			// Attempt to submit a challenge as an operator, which should fail
@@ -461,7 +461,7 @@ export function RefereeTests(deployInfrastructure) {
 		})
 
 		it("Check that rewards for a challenge can be expired", async function () {
-			const {referee, operator, challenger} = await loadFixture(deployInfrastructure);
+			const { referee, operator, challenger } = await loadFixture(deployInfrastructure);
 
 			// Submit a challenge
 			await referee.connect(challenger).submitChallenge(
@@ -490,7 +490,7 @@ export function RefereeTests(deployInfrastructure) {
 		});
 
 		it("Check that rewards for a challenge can be expired via claimReward", async function () {
-			const {referee, operator, challenger} = await loadFixture(deployInfrastructure);
+			const { referee, operator, challenger } = await loadFixture(deployInfrastructure);
 
 			// Submit a challenge
 			await referee.connect(challenger).submitChallenge(
@@ -523,7 +523,7 @@ export function RefereeTests(deployInfrastructure) {
 		});
 
 		it("Check that submitting an invalid successorRoot does not create a submission", async function () {
-			const {referee, operator, challenger} = await loadFixture(deployInfrastructure);
+			const { referee, operator, challenger } = await loadFixture(deployInfrastructure);
 
 			// Submit a challenge
 			await referee.connect(challenger).submitChallenge(
