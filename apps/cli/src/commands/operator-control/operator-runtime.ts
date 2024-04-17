@@ -73,11 +73,11 @@ export function bootOperator(cli: Vorpal) {
                         type: 'checkbox',
                         name: 'selectedOptOutPools',
                         message: 'Select the pools to exclude for operating:',
-                        choices: [operatorPoolAddresses]
+                        choices: [...operatorPoolAddresses]
                     }
     
                     const optOutPoolsResult = await this.prompt(optOutPoolsPrompt);
-                    selectedOptOutPools = optOutPoolsPrompt.selectedOptOutPools;
+                    selectedOptOutPools = optOutPoolsResult.selectedOptOutPools;
     
                     console.log("selectedOptOutPools", selectedOptOutPools);
                 }
@@ -94,6 +94,7 @@ export function bootOperator(cli: Vorpal) {
                     Logger.log(log)
                 },
                 selectedOwners,
+                selectedOptOutPools,
                 (publicNodeData: PublicNodeBucketInformation | undefined, challenge: Challenge, message: string) => {
                     const errorMessage = `The comparison between public node and challenge failed:\n` +
                         `${message}\n\n` +

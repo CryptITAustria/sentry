@@ -78,6 +78,8 @@ const keyToOwner: { [keyId: string]: string } = {}; //Used to remember the owner
 let ownerStakedKey: { [keyId: string]: string } = {}; //Used to remember if a key came from an owner and was staked into a pool we don't operate
 const KEYS_PER_BATCH = 100;
 
+let optOutPoolAddresses: string[]; //Used to remember the selection of optOut pools
+
 async function getPublicNodeFromBucket(confirmHash: string) {
     const url = `https://sentry-public-node.xai.games/assertions/${confirmHash.toLowerCase()}.json`;
     const response = await axios.get(url);
@@ -158,7 +160,11 @@ const reloadPoolKeys = async () => {
     operatorPoolAddresses = await getOwnerOrDelegatePools(operatorAddress);
     //TODO @br we need to only remove unselected pools
     if (operatorPoolAddresses.length) {
-
+        //TODO @br test and check if only pools without optout are operated
+        if (optOutPoolAddresses.length) {
+            operatorPoolAddresses = operatorPoolAddresses.filter(address => !(new Set(optOutPoolAddresses)).has(address));
+            cachedLogger(`Without optOut ${operatorPoolAddresses} and removed ${optOutPoolAddresses}`);
+        }
 
         //We have pools, add all new keys, update all pool addresses and remove all unstaked keys if they were not in the list before
         const currentPoolKeys: { [key: string]: string } = {};
@@ -644,6 +650,7 @@ export async function operatorRuntime(
     statusCallback: (status: NodeLicenseStatusMap) => void = (_) => { },
     logFunction: (log: string) => void = (_) => { },
     operatorOwners?: string[],
+    optOutPools?: string[],
     onAssertionMissMatch: (publicNodeData: PublicNodeBucketInformation | undefined, challenge: Challenge, message: string) => void = (_) => { }
 
 ): Promise<() => Promise<void>> {
@@ -651,6 +658,11 @@ export async function operatorRuntime(
     cachedLogger = logFunction;
     cachedSigner = signer;
     onAssertionMissMatchCb = onAssertionMissMatch;
+
+    // Cache the selection of optOut pool addresses
+    if (optOutPools) {
+        optOutPoolAddresses = optOutPools;
+    }
 
     logFunction(`Booting operator runtime version [${version}].`);
 
@@ -712,7 +724,13 @@ export async function operatorRuntime(
         // Get all user pool addresses as owner and delegated
         operatorPoolAddresses = await getOwnerOrDelegatePools(operatorAddress);
 
+
         if (operatorPoolAddresses.length) {
+            //TODO @br test and check if only pools without optout are operated
+            if (optOutPoolAddresses.length) {
+                operatorPoolAddresses = operatorPoolAddresses.filter(address => !(new Set(optOutPoolAddresses)).has(address));
+                logFunction(`Without optOut ${operatorPoolAddresses} and removed ${optOutPoolAddresses}`);
+            }
             logFunction(`Found ${operatorPoolAddresses.length} pools for operator.`);
             //For each pool we need to fetch all keys
 
