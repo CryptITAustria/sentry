@@ -1,6 +1,6 @@
 import Vorpal from "vorpal";
 import Logger from "../../utils/Logger.js"
-import { getSignerFromPrivateKey, operatorRuntime, listOwnersForOperator, Challenge, PublicNodeBucketInformation } from "@sentry/core";
+import { getSignerFromPrivateKey, operatorRuntime, listOwnersForOperator, Challenge, PublicNodeBucketInformation, getOwnerOrDelegatePools } from "@sentry/core";
 
 /**
  * Starts a runtime of the operator.
@@ -38,10 +38,17 @@ export function bootOperator(cli: Vorpal) {
 
             // If useWhitelist is false, selectedOwners will be undefined
             let selectedOwners;
+
+            //TODO @br set selectedPools
+            let selectedOptOutPools;
             if (useWhitelist) {
                 
                 const operatorAddress = await signer.getAddress();
                 const owners = await listOwnersForOperator(operatorAddress);
+                
+                //TODO @br get pools and delegated pool addresses
+                const operatorPoolAddresses = await getOwnerOrDelegatePools(operatorAddress);
+                console.log("operatorPoolAddresses", operatorPoolAddresses);
 
                 const ownerPrompt: Vorpal.PromptObject = {
                     type: 'checkbox',
@@ -58,8 +65,24 @@ export function bootOperator(cli: Vorpal) {
                 if (!selectedOwners || selectedOwners.length < 1) {
                     throw new Error("No owners selected. Please select at least one owner.")
                 }
+                
+                if (operatorPoolAddresses.length) {
+                    
+                    //TODO @br at prompt for selection of pools to not operate
+                    const optOutPoolsPrompt: Vorpal.PromptObject = {
+                        type: 'checkbox',
+                        name: 'selectedOptOutPools',
+                        message: 'Select the pools to exclude for operating:',
+                        choices: [operatorPoolAddresses]
+                    }
+    
+                    const optOutPoolsResult = await this.prompt(optOutPoolsPrompt);
+                    selectedOptOutPools = optOutPoolsPrompt.selectedOptOutPools;
+    
+                    console.log("selectedOptOutPools", selectedOptOutPools);
+                }
             }
-
+            //TODOO @br add unselectedPools to operatorRuntime
             stopFunction = await operatorRuntime(
                 signer,
                 undefined,

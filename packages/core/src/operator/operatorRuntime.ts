@@ -156,7 +156,7 @@ const checkV2Enabled = async (): Promise<boolean> => {
 
 const reloadPoolKeys = async () => {
     operatorPoolAddresses = await getOwnerOrDelegatePools(operatorAddress);
-
+    //TODO @br we need to only remove unselected pools
     if (operatorPoolAddresses.length) {
 
 
@@ -523,7 +523,7 @@ async function processClosedChallenges(challengeId: bigint) {
                     updateNodeLicenseStatus(key, beforeStatus[key.toString()]!);
                 }
             });
-            
+
             safeStatusCallback();
         }
     }
@@ -715,6 +715,8 @@ export async function operatorRuntime(
         if (operatorPoolAddresses.length) {
             logFunction(`Found ${operatorPoolAddresses.length} pools for operator.`);
             //For each pool we need to fetch all keys
+
+            //TODO @br we need to only remove unselected pools
 
             for (const pool of operatorPoolAddresses) {
                 //Check every key and find out if its already in the nodeLicenseIds list
