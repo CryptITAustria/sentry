@@ -27,6 +27,8 @@ export function bootOperator(cli: Vorpal) {
 
             const { signer } = getSignerFromPrivateKey(walletKey);
 
+            console.log("signer", signer);
+
             const whitelistPrompt: Vorpal.PromptObject = {
                 type: 'confirm',
                 name: 'useWhitelist',
@@ -44,7 +46,10 @@ export function bootOperator(cli: Vorpal) {
             if (useWhitelist) {
                 
                 const operatorAddress = await signer.getAddress();
+                console.log("operatorAddress", operatorAddress);
+
                 const owners = await listOwnersForOperator(operatorAddress);
+                console.log("owners", owners);
                 
                 //TODO @br get pools and delegated pool addresses
                 const operatorPoolAddresses = await getOwnerOrDelegatePools(operatorAddress);
