@@ -24,6 +24,7 @@ import {BiLoaderAlt} from "react-icons/bi";
 import {useGetWalletBalance} from "@/hooks/useGetWalletBalance";
 import {useGetSingleWalletBalance} from "@/hooks/useGetSingleWalletBalance";
 import log from "electron-log";
+import { chainStateAtom } from "@/hooks/useChainDataWithCallback";
 
 interface HasKeysProps {
 	combinedOwners: string[],
@@ -47,7 +48,8 @@ export function HasKeys({combinedOwners, combinedLicensesMap, statusMap, isWalle
 	const {startRuntime, sentryRunning} = useOperatorRuntime();
 	const {data: earnedEsxaiBalance} = useGetWalletBalance(combinedOwners);
 	const {data: singleWalletBalance} = useGetSingleWalletBalance(selectedWallet);
-
+	const {pools} = useAtomValue(chainStateAtom);
+	
 	function startAssignment() {
 		if (!isOperatorLoading) {
 			setModalState(ModalView.TransactionInProgress);
@@ -207,16 +209,16 @@ export function HasKeys({combinedOwners, combinedLicensesMap, statusMap, isWalle
 
 	//TODO get pools of wallets
 	function getDropdownItemsPools() {
-		return Object.values(combinedOwners).map((wallet, i) => (
+		return Object.values(pools).map((pool, i) => (
 			<p
 				onClick={() => {
-					setSelectedWallet(wallet);
+					setSelectedWallet(pool);
 					setIsOpen(false);
 				}}
 				className="p-2 cursor-pointer hover:bg-gray-100"
 				key={`sentry-item-${i}`}
 			>
-				{wallet}
+				{pool}
 			</p>
 		));
 	}
