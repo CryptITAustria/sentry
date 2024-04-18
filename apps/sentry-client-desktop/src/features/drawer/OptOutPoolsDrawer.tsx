@@ -1,20 +1,20 @@
-import { useAtomValue, useSetAtom } from "jotai";
-import { drawerStateAtom } from "@/features/drawer/DrawerManager";
-import { chainStateAtom } from "@/hooks/useChainDataWithCallback";
-import { Tooltip, XaiCheckbox } from "@sentry/ui";
-import { useEffect, useState } from "react";
-import { useStorage } from "@/features/storage";
-import { useOperatorRuntime } from "@/hooks/useOperatorRuntime";
-import { useOperator } from "@/features/operator";
-import { AiOutlineInfoCircle } from "react-icons/ai";
+import {useAtomValue, useSetAtom} from "jotai";
+import {drawerStateAtom} from "@/features/drawer/DrawerManager";
+import {chainStateAtom} from "@/hooks/useChainDataWithCallback";
+import {Tooltip, XaiCheckbox} from "@sentry/ui";
+import {useEffect, useState} from "react";
+import {useStorage} from "@/features/storage";
+import {useOperatorRuntime} from "@/hooks/useOperatorRuntime";
+import {useOperator} from "@/features/operator";
+import {AiOutlineInfoCircle} from "react-icons/ai";
 
 export function OptOutPoolsDrawer() {
     const setDrawerState = useSetAtom(drawerStateAtom);
-    const { pools } = useAtomValue(chainStateAtom);
-    const { data, setData } = useStorage();
+    const {pools} = useAtomValue(chainStateAtom);
+    const {data, setData} = useStorage();
     const [selected, setSelected] = useState<string[]>([]);
-    const { sentryRunning, stopRuntime } = useOperatorRuntime();
-    const { publicKey: operatorAddress } = useOperator();
+    const {sentryRunning, stopRuntime} = useOperatorRuntime();
+    const {publicKey: operatorAddress} = useOperator();
 
     const disableButton = selected.length <= 0 || !stopRuntime;
 
