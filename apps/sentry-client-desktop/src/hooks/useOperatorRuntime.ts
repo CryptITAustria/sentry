@@ -29,6 +29,7 @@ export function useOperatorRuntime() {
 	const [, setRerender] = useState(0);
 	const {data, setData} = useStorage();
 	const whitelistedWallets = data?.whitelistedWallets;
+	const optOutPools = data?.optOutPools;
 
 	// start sentry on launch / restart sentry
 	useEffect(() => {
@@ -58,7 +59,7 @@ export function useOperatorRuntime() {
 			await setData({...data, sentryRunning: true});
 
 			// @ts-ignore
-			stop = await operatorRuntime(signer, setNodeLicenseStatusMap, writeLog, whitelistedWallets, onAssertionMissMatch);
+			stop = await operatorRuntime(signer, setNodeLicenseStatusMap, writeLog, whitelistedWallets, optOutPools, onAssertionMissMatch);
 			setRerender((_number) => _number + 1);
 		}
 	}

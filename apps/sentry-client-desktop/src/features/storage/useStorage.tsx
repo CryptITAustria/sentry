@@ -9,6 +9,7 @@ export type IData = Partial<{
 	whitelistedWallets: string[];
 	kycStartedWallets: string[];
 	sentryRunning: boolean;
+	optOutPools: string[];
 }>;
 
 interface IUseStorageResponse {

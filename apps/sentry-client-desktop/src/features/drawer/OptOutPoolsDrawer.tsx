@@ -38,12 +38,7 @@ export function OptOutPoolsDrawer() {
                     <div
                         className="p-2 cursor-pointer hover:bg-gray-100"
                     >
-                        <XaiCheckbox
-                            onClick={() => toggleSelected(operatorAddress)}
-                            condition={selected.includes(operatorAddress)}
-                        >
-                            {operatorAddress}
-                        </XaiCheckbox>
+                        {operatorAddress}
                     </div>
                 </div>
             )
@@ -71,7 +66,7 @@ export function OptOutPoolsDrawer() {
     async function handleSubmit() {
         await setData({
             ...data,
-            whitelistedWallets: selected,
+            optOutPools: selected,
         });
 
         setDrawerState(null);
