@@ -1,12 +1,13 @@
 import classNames from "classnames";
-import {atom, useAtomValue} from "jotai";
-import {ActionsRequiredBuyDrawer} from "../home/modals/actions-required/ActionsRequiredBuyDrawer";
-import {BuyKeysDrawer} from "../keys/modals/buy-keys/BuyKeysDrawer";
-import {ViewKeysDrawer} from "../home/modals/view-keys/ViewKeysDrawer";
-import {ActionsRequiredNotAccruingDrawer} from "../home/modals/actions-required/ActionsRequiredNotAccruingDrawer";
-import {ExportSentryDrawer} from "../home/modals/ExportSentryDrawer";
-import {ImportSentryDrawer} from "../home/modals/ImportSentryDrawer";
-import {WhitelistDrawer} from "@/features/drawer/WhitelistDrawer";
+import { atom, useAtomValue } from "jotai";
+import { ActionsRequiredBuyDrawer } from "../home/modals/actions-required/ActionsRequiredBuyDrawer";
+import { BuyKeysDrawer } from "../keys/modals/buy-keys/BuyKeysDrawer";
+import { ViewKeysDrawer } from "../home/modals/view-keys/ViewKeysDrawer";
+import { ActionsRequiredNotAccruingDrawer } from "../home/modals/actions-required/ActionsRequiredNotAccruingDrawer";
+import { ExportSentryDrawer } from "../home/modals/ExportSentryDrawer";
+import { ImportSentryDrawer } from "../home/modals/ImportSentryDrawer";
+import { WhitelistDrawer } from "@/features/drawer/WhitelistDrawer";
+import { OptOutPoolsDrawer } from "./OptOutPoolsDrawer";
 
 export enum DrawerView {
 	ActionsRequiredBuy,
@@ -16,6 +17,7 @@ export enum DrawerView {
 	Whitelist,
 	ImportSentry,
 	ExportSentry,
+	OptOutPools,
 }
 
 export const drawerStateAtom = atom<DrawerView | null>(null);
@@ -30,31 +32,35 @@ export function DrawerManager() {
 			})}
 		>
 			{drawerState === DrawerView.ActionsRequiredBuy && (
-				<ActionsRequiredBuyDrawer/>
+				<ActionsRequiredBuyDrawer />
 			)}
 
 			{drawerState === DrawerView.ActionsRequiredNotAccruing && (
-				<ActionsRequiredNotAccruingDrawer/>
+				<ActionsRequiredNotAccruingDrawer />
 			)}
 
 			{drawerState === DrawerView.BuyKeys && (
-				<BuyKeysDrawer/>
+				<BuyKeysDrawer />
 			)}
 
 			{drawerState === DrawerView.ViewKeys && (
-				<ViewKeysDrawer/>
+				<ViewKeysDrawer />
 			)}
 
 			{drawerState === DrawerView.Whitelist && (
-				<WhitelistDrawer/>
+				<WhitelistDrawer />
+			)}
+
+			{drawerState === DrawerView.OptOutPools && (
+				<OptOutPoolsDrawer />
 			)}
 
 			{drawerState === DrawerView.ImportSentry && (
-				<ImportSentryDrawer/>
+				<ImportSentryDrawer />
 			)}
 
 			{drawerState === DrawerView.ExportSentry && (
-				<ExportSentryDrawer/>
+				<ExportSentryDrawer />
 			)}
 		</div>
 	);

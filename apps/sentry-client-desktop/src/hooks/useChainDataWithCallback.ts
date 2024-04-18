@@ -1,15 +1,17 @@
-import {useOperator} from "@/features/operator";
-import {useListOwnersForOperatorWithCallback} from "@/hooks/useListOwnersForOperatorWithCallback";
-import {atom, useAtom, useAtomValue, useSetAtom} from "jotai";
-import {useEffect} from "react";
-import {StatusMap, useKycStatusesWithCallback} from "@/hooks/useKycStatusesWithCallback";
-import {getLicensesList, LicenseList, LicenseMap, useListNodeLicensesWithCallback} from "@/hooks/useListNodeLicensesWithCallback";
-import {useCombinedOwners} from "@/hooks/useCombinedOwners";
+import { useOperator } from "@/features/operator";
+import { useListOwnersForOperatorWithCallback } from "@/hooks/useListOwnersForOperatorWithCallback";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useEffect } from "react";
+import { StatusMap, useKycStatusesWithCallback } from "@/hooks/useKycStatusesWithCallback";
+import { getLicensesList, LicenseList, LicenseMap, useListNodeLicenses } from "@/hooks/useListNodeLicensesWithCallback";
+import { useCombinedOwners } from "@/hooks/useCombinedOwners";
+import { useOwnerAndDelegatedPools } from "./useOwnerAndDelegatedPools";
 
 interface ChainState {
 	anyLoading: boolean;
 	ownersLoading: boolean;
 	owners: string[];
+	pools: string[];
 	ownersKycLoading: boolean;
 	ownersKycMap: StatusMap;
 	combinedWalletsKycMap: StatusMap;
@@ -24,6 +26,7 @@ const defaultChainState: ChainState = {
 	anyLoading: true,
 	ownersLoading: true,
 	owners: [],
+	pools: [],
 	ownersKycLoading: false,
 	ownersKycMap: {},
 	combinedWalletsKycMap: {},
@@ -47,11 +50,12 @@ export const chainStateRefreshAtom = atom(0);
 export function useChainDataWithCallback() {
 	const [chainState, setChainState] = useAtom(chainStateAtom);
 	const chainStateRefresh = useAtomValue(chainStateRefreshAtom);
-	const {publicKey} = useOperator();
-	const {isLoading: ownersLoading, owners} = useListOwnersForOperatorWithCallback(publicKey, false, chainStateRefresh);
-	const {combinedOwners} = useCombinedOwners(owners);
-	const {isLoading: ownersKycLoading, statusMap: combinedWalletsKycMap} = useKycStatusesWithCallback(combinedOwners, chainStateRefresh);
-	const {isLoading: licensesLoading, licensesMap: combinedLicensesMap} = useListNodeLicensesWithCallback(combinedOwners, chainStateRefresh);
+	const { publicKey } = useOperator();
+	const { isLoading: ownersLoading, owners } = useListOwnersForOperatorWithCallback(publicKey, false, chainStateRefresh);
+	const { combinedOwners } = useCombinedOwners(owners);
+	const { isLoading: poolsLoading, pools } = useOwnerAndDelegatedPools(publicKey)
+	const { isLoading: ownersKycLoading, statusMap: combinedWalletsKycMap } = useKycStatusesWithCallback(combinedOwners, chainStateRefresh);
+	const { isLoading: licensesLoading, licensesMap: combinedLicensesMap } = useListNodeLicenses(combinedOwners, chainStateRefresh);
 
 	// set default state
 	useEffect(() => {
@@ -66,10 +70,11 @@ export function useChainDataWithCallback() {
 				ownersLoading,
 				ownersKycLoading,
 				licensesLoading,
-				anyLoading: ownersLoading || ownersKycLoading || licensesLoading,
+				poolsLoading,
+				anyLoading: ownersLoading || ownersKycLoading || licensesLoading || poolsLoading,
 			}
 		});
-	}, [ownersLoading, ownersKycLoading, licensesLoading]);
+	}, [ownersLoading, ownersKycLoading, licensesLoading, poolsLoading]);
 
 	// return owners
 	useEffect(() => {
@@ -80,6 +85,16 @@ export function useChainDataWithCallback() {
 			}
 		});
 	}, [owners]);
+
+	// return pools
+	useEffect(() => {
+		setChainState((_chainState) => {
+			return { 
+				..._chainState,
+				pools,
+			}
+		})
+	}, [pools])
 
 	// return ownersKycMap & combinedWalletsKycMap
 	useEffect(() => {
