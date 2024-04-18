@@ -41,6 +41,7 @@ export function HasKeys({combinedOwners, combinedLicensesMap, statusMap, isWalle
 	const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
 	const [copiedSelectedWallet, setCopiedSelectedWallet] = useState<boolean>(false);
 	const [isOpen, setIsOpen] = useState<boolean>(false);
+	const [isOpenPools, setIsOpenPools] = useState<boolean>(false);
 	const [isRemoveWalletOpen, setIsRemoveWalletOpen] = useState<boolean>(false);
 	const {isLoading: isOperatorLoading, publicKey: operatorAddress} = useOperator();
 	const {startRuntime, sentryRunning} = useOperatorRuntime();
@@ -204,6 +205,22 @@ export function HasKeys({combinedOwners, combinedLicensesMap, statusMap, isWalle
 		));
 	}
 
+	//TODO get pools of wallets
+	function getDropdownItemsPools() {
+		return Object.values(combinedOwners).map((wallet, i) => (
+			<p
+				onClick={() => {
+					setSelectedWallet(wallet);
+					setIsOpen(false);
+				}}
+				className="p-2 cursor-pointer hover:bg-gray-100"
+				key={`sentry-item-${i}`}
+			>
+				{wallet}
+			</p>
+		));
+	}
+
 	function copySelectedWallet() {
 		if (selectedWallet && navigator.clipboard) {
 			navigator.clipboard.writeText(selectedWallet)
@@ -296,6 +313,49 @@ export function HasKeys({combinedOwners, combinedLicensesMap, statusMap, isWalle
 					</div>
 				</div>
 
+				<div className="w-full h-auto flex flex-col py-3 pl-10">
+					<p className="text-sm uppercase text-[#A3A3A3] mb-1 mt-2">
+						Pools
+					</p>
+					<div className="relative flex flex-row gap-2">
+						<div>
+							<div
+								onClick={() => setIsOpenPools(!isOpenPools)}
+								className={`flex items-center justify-between w-[538px] border-[#A3A3A3] border-r border-l border-t ${!isOpenPools ? "border-b" : "pb-[9px]"} border-[#A3A3A3] p-2`}
+							>
+								<p>{selectedWallet || `All pools (${Object.keys(combinedOwners).length})`}</p>
+								<IoIosArrowDown
+									className={`h-[15px] transform ${isOpenPools ? "rotate-180 transition-transform ease-in-out duration-300" : "transition-transform ease-in-out duration-300"}`}
+								/>
+							</div>
+
+							{isOpenPools && (
+								<div
+									className="absolute flex flex-col w-[538px] border-r border-l border-b border-[#A3A3A3] bg-white z-30">
+									<p
+										onClick={() => {
+											setSelectedWallet(null);
+											setIsOpenPools(false);
+										}}
+										className="p-2 cursor-pointer hover:bg-gray-100"
+									>
+										All
+									</p>
+									{getDropdownItemsPools()}
+								</div>
+							)}
+						</div>
+
+						<button
+							onClick={() => setDrawerState(DrawerView.OptOutPools)}
+							className={`flex flex-row justify-center items-center gap-2 text-[15px] border border-[#E5E5E5] px-4 py-2`}
+						>
+
+							Opt-Out of Pools
+						</button>
+
+					</div>
+				</div>
 				<div>
 					<div className="flex">
 
