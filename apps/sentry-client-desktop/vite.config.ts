@@ -54,6 +54,13 @@ export default defineConfig({
 	},
 
     build: {
-        sourcemap: true
-    }
+        sourcemap: true,
+		commonjsOptions: {
+			include: [/@sentry\/sentry-subgraph-client/, /node_modules/], // Include all node_modules by default, adjust as necessary
+			transformMixedEsModules: true, // Enable transformation of mixed ES modules
+		}
+    },
+    optimizeDeps: {
+        include: ["@sentry/sentry-subgraph-client"], // Explicitly include @wagmi/core for optimization
+    },
 })

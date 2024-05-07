@@ -2,11 +2,12 @@
   "name": "@sentry/sentry-subgraph-client",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/.graphclient/index.js",
-  "types": "dist/.graphclient/index.d.ts",
+  "exports": {
+    ".": "./dist/.graphclient/index.js"
+  },
   "scripts": {
     "clean": "rimraf .graphclient dist",
-    "build": "graphclient build && tsc",
+    "build": "graphclient build",
     "dev": "graphclient serve-dev"
   },
   "keywords": [],

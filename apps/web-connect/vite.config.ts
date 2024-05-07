@@ -25,11 +25,11 @@ export default defineConfig({
 			// If there are specific external packages causing issues, configure them here
 		},
 		commonjsOptions: {
-			include: [/node_modules/], // Include all node_modules by default, adjust as necessary
+			include: [/@sentry\/sentry-subgraph-client/, /node_modules/], // Include all node_modules by default, adjust as necessary
 			transformMixedEsModules: true, // Enable transformation of mixed ES modules
 		},
 	},
 	optimizeDeps: {
-		include: ["@wagmi/core"], // Explicitly include @wagmi/core for optimization
+		include: ["@sentry/sentry-subgraph-client", "@wagmi/core"], // Explicitly include @wagmi/core for optimization
 	},
 })
