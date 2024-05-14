@@ -11,7 +11,8 @@ import {
     getLatestChallengeFromGraph,
     getSentryWalletsForOperator,
     getSentryKeysFromGraph,
-    getPoolInfosFromGraph
+    getPoolInfosFromGraph,
+    getChallenge
 } from "../index.js";
 import axios from "axios";
 import { PoolInfo, RefereeConfig, SentryKey, SentryWallet, Submission } from "@sentry/sentry-subgraph-client";
@@ -548,74 +549,41 @@ export async function operatorRuntime(
 
 ): Promise<() => Promise<void>> {
 
-    cachedLogger = logFunction;
-    cachedSigner = signer;
-    onAssertionMissMatchCb = onAssertionMissMatch;
-    cachedOperatorOwners = operatorOwners;
+    let offset = 0;
+    while (true) {
+        const challenges = await getLatestChallengeFromGraph(graphClient, 10, 10 * offset);
 
-    logFunction(`Booting operator runtime version [${version}].`);
-
-    const provider = getProvider();
-
-    // Create a wrapper for the statusCallback to always send back a fresh copy of the map, so the other side doesn't mutate the map
-    safeStatusCallback = () => {
-        // Create a fresh copy of the map
-        const statusCopy: NodeLicenseStatusMap = new Map(nodeLicenseStatusMap);
-
-        // Call the original statusCallback with the copy
-        statusCallback(statusCopy);
-    };
-
-    // get the address of the operator
-    operatorAddress = await signer.getAddress();
-    logFunction(`Fetched address of operator ${operatorAddress}.`);
-
-    const closeChallengeListener = listenForChallenges(listenForChallengesCallback);
-    logFunction(`Started listener for new challenges.`);
-
-    // Process open challenge
-    const openChallenge = await retry(() => getLatestChallengeFromGraph(graphClient));
-
-    const latestClaimableChallenge = Number(openChallenge.challengeNumber) <= MAX_CHALLENGE_CLAIM_AMOUNT ? 1 : Number(openChallenge.challengeNumber) - MAX_CHALLENGE_CLAIM_AMOUNT;
-    const { sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig } = await loadOperatingKeys(operatorAddress, operatorOwners, BigInt(latestClaimableChallenge));
-
-    logFunction(`Processing open challenges.`);
-
-    await processNewChallenge(BigInt(openChallenge.challengeNumber), openChallenge, nodeLicenseIds, sentryKeysMap, sentryWalletMap, mappedPools, refereeConfig);
-
-    //Remove submissions for current challenge so we don't process it again
-    nodeLicenseIds.forEach(n => {
-        const found = findSubmissionOnSentryKey(sentryKeysMap[n.toString()], BigInt(openChallenge.challengeNumber));
-        if (found) {
-            sentryKeysMap[n.toString()].submissions.splice(found.index, 1);
+        if (challenges.length == 0) {
+            logFunction("Finished");
+            break;
         }
-    });
 
-    //Process all past challenges check for unclaimed
-    processPastChallenges(
-        nodeLicenseIds,
-        sentryKeysMap,
-        sentryWalletMap,
-        openChallenge.challengeNumber,
-        latestClaimableChallenge
-    ).then(() => {
-        logFunction(`The operator has finished booting. The operator is running successfully. esXAI will accrue every few days.`);
-    })
+        logFunction(`Processing ${10 * (offset + 1)} - ${10 * (offset + 1)} = ${challenges.length} challenges`);
 
-    const fetchBlockNumber = async () => {
-        try {
-            const blockNumber = await provider.getBlockNumber();
-            logFunction(`[cli ${version}] Health Check on JSON RPC, Operator still healthy. Current block number: ${blockNumber}`);
-        } catch (error) {
-            logFunction(`Error fetching block number, operator may no longer be connected to the JSON RPC: ${JSON.stringify(error)}.`);
+        for (let i = 0; i < challenges.length; i++) {
+            const challenge = challenges[i];
+
+            const bcChallenge = await getChallenge(BigInt(challenge.challengeNumber));
+            if (!bcChallenge) {
+                logFunction("ERROR!!!! Did not find bc challenge " + challenge.challengeNumber.toString());
+                continue
+            }
+
+            if (challenge.amountClaimedByClaimers.toString() != bcChallenge.amountClaimedByClaimers.toString()) {
+                logFunction(`ERROR!!!! Challenge miss-match ${challenge.challengeNumber.toString()} Invalid value for amountClaimedByClaimers: graph: ${challenge.amountClaimedByClaimers.toString()} - bc: ${bcChallenge.amountClaimedByClaimers.toString()}`)
+            }
+            if (challenge.numberOfEligibleClaimers.toString() != bcChallenge.numberOfEligibleClaimers.toString()) {
+                logFunction(`ERROR!!!! Challenge miss-match ${challenge.challengeNumber.toString()} Invalid value for numberOfEligibleClaimers: graph: ${challenge.numberOfEligibleClaimers.toString()} - bc: ${bcChallenge.numberOfEligibleClaimers.toString()}`)
+            }
+            if (challenge.submissions.length.toString() != challenge.numberOfEligibleClaimers.toString()) {
+                logFunction(`ERROR!!!! Challenge miss-match ${challenge.challengeNumber.toString()} Invalid value for graph challenge.submissions.length: ${challenge.submissions.length}`)
+            }
+
         }
-    };
-    fetchBlockNumber();
-    const intervalId = setInterval(fetchBlockNumber, 300000); // 300,000 milliseconds = 5 minutes
+        offset++
+    }
 
     async function stop() {
-        clearInterval(intervalId);
-        closeChallengeListener();
         logFunction("Challenge listener stopped.");
     }
 

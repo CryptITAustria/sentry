@@ -5,25 +5,28 @@ import { GraphQLClient, gql } from 'graphql-request'
  * @returns The challenge entity from the graph.
  */
 export async function getLatestChallengeFromGraph(
-  client: GraphQLClient
-): Promise<Challenge> {
+  client: GraphQLClient,
+  first: number,
+  skip: number
+): Promise<Challenge[]> {
 
   const query = gql`
-      query ChallengeQuery {
-        challenges(
-          where: {status: OpenForSubmissions}
-          orderBy: challengeNumber
-          orderDirection: desc
-        ) {
-          assertionId
-          challengeNumber
-          status
-          createdTimestamp
-          assertionStateRootOrConfirmData
-          challengerSignedHash
+    query Challenges {
+      challenges(first: ${first}, skip: ${skip}, orderBy: challengeNumber, orderDirection: desc) {
+        amountClaimedByClaimers
+        challengeNumber
+        numberOfEligibleClaimers
+        submissions(where: {eligibleForPayout: true} first: 5000, orderBy: nodeLicenseId, orderDirection: asc) {
+          claimed
+          eligibleForPayout
+          createdTxHash
+          claimTxHash
+          nodeLicenseId
         }
       }
-    `
+    }
+  `
+
   const result = await client.request(query) as any;
-  return result.challenges[0];
+  return result.challenges;
 }
