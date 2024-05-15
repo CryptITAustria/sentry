@@ -25,5 +25,8 @@ export async function getLatestChallengeFromGraph(
       }
     `
   const result = await client.request(query) as any;
+  if (!result) {
+    throw new Error("Subgraph connection failed");
+  }
   return result.challenges[0];
 }
