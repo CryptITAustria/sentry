@@ -49,6 +49,14 @@ type ProcessChallenge = {
     assertionStateRootOrConfirmData: string;
 }
 
+type CachedLoadedOperatingKeys = {
+    sentryWalletMap: {[owner: string]: SentryWallet};
+    sentryKeysMap: { [keyId: string]: SentryKey};
+    nodeLicenseIds: bigint[];
+    mappedPools: { [poolAddress: string]: PoolInfo};
+    refereeConfig: RefereeConfig;
+};
+
 let cachedSigner: ethers.Signer;
 let cachedLogger: (log: string) => void;
 let safeStatusCallback: () => void;
@@ -56,6 +64,7 @@ let onAssertionMissMatchCb: (publicNodeData: PublicNodeBucketInformation | undef
 let cachedBoostFactor: { [ownerAddress: string]: bigint } = {};
 let operatorAddress: string;
 const KEYS_PER_BATCH = 100;
+let cachedLoadedOperatingKeys: CachedLoadedOperatingKeys;
 
 const graphClient = new GraphQLClient(config.subgraphEndpoint);
 
@@ -405,6 +414,11 @@ async function listenForChallengesCallback(challengeNumber: bigint, challenge: C
 
     const { sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig } =
         await loadOperatingKeys(operatorAddress, cachedOperatorOwners, challengeNumber - 1n);
+    if ({ sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig }) {
+        cachedLoadedOperatingKeys = { sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig }
+    } else {
+        //TODO Rpc call
+    }
 
     await processNewChallenge(challengeNumber, challenge, nodeLicenseIds, sentryKeysMap, sentryWalletMap, mappedPools, refereeConfig);
 
@@ -574,10 +588,18 @@ export async function operatorRuntime(
     logFunction(`Started listener for new challenges.`);
 
     // Process open challenge
+    //TODO get latest Challenge from rpc
     const openChallenge = await retry(() => getLatestChallengeFromGraph(graphClient));
 
     const latestClaimableChallenge = Number(openChallenge.challengeNumber) <= MAX_CHALLENGE_CLAIM_AMOUNT ? 1 : Number(openChallenge.challengeNumber) - MAX_CHALLENGE_CLAIM_AMOUNT;
-    const { sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig } = await loadOperatingKeys(operatorAddress, operatorOwners, BigInt(latestClaimableChallenge));
+
+    //TODO cache and if fails take cache, instead rpc call
+    const { sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig } = await retry(() => loadOperatingKeys(operatorAddress, operatorOwners, BigInt(latestClaimableChallenge)));
+    if ({ sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig }) {
+        cachedLoadedOperatingKeys = { sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig };
+    } else {
+        //TODO make rpc call
+    }
 
     logFunction(`Processing open challenges.`);
 
