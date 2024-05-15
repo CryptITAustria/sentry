@@ -17,7 +17,9 @@ import {
     getUserInteractedPools,
     getUserStakedKeysOfPool,
     listNodeLicenses,
-    getLatestChallenge
+    getLatestChallenge,
+    getBoostFactor as getBoostFactorRPC,
+    getMintTimestamp
 } from "../index.js";
 import axios from "axios";
 // import { PoolInfo, RefereeConfig, SentryKey, SentryWallet, Submission } from "@sentry/sentry-subgraph-client";
@@ -68,9 +70,9 @@ type SentryWallet = {
 }
 
 type SentryKey = {
-    id: string;
+    id?: string;
     owner: string;
-    sentryWallet: SentryWallet;
+    sentryWallet?: SentryWallet;
     keyId: bigint;
     mintTimeStamp: bigint;
     assignedPool: string;
@@ -259,8 +261,8 @@ async function processNewChallenge(
     challenge: ProcessChallenge,
     nodeLicenseIds: bigint[],
     sentryKeysMap: { [keyId: string]: SentryKey },
-    sentryWalletMap: { [address: string]: SentryWallet },
-    mappedPools: { [poolAddress: string]: PoolInfo },
+    sentryWalletMap?: { [address: string]: SentryWallet },
+    mappedPools?: { [poolAddress: string]: PoolInfo },
     refereeConfig?: RefereeConfig
 ) {
     cachedLogger(`Processing new challenge with number: ${challengeNumber}.`);
@@ -293,8 +295,12 @@ async function processNewChallenge(
             const keyOwner = isPool ? sentryKey.assignedPool : sentryKey.owner;
             if (!cachedBoostFactor[keyOwner]) {
                 //TODO if rpc call
-                cachedBoostFactor[keyOwner] = calculateBoostFactor(sentryKey, sentryWalletMap[sentryKey.owner], mappedPools, refereeConfig);
-                cachedLogger(`Found chance boost of ${Number(cachedBoostFactor[keyOwner]) / 100}% for ${isPool ? `pool: ${mappedPools[keyOwner].metadata[0]} (${keyOwner})` : `owner: ${keyOwner}`}`);
+                if (mappedPools && refereeConfig && sentryWalletMap) {
+                    cachedBoostFactor[keyOwner] = calculateBoostFactor(sentryKey, sentryWalletMap[sentryKey.owner], mappedPools, refereeConfig);
+                    cachedLogger(`Found chance boost of ${Number(cachedBoostFactor[keyOwner]) / 100}% for ${isPool ? `pool: ${mappedPools[keyOwner].metadata[0]} (${keyOwner})` : `owner: ${keyOwner}`}`);
+                } else {
+                    cachedBoostFactor[keyOwner] = await getBoostFactorRPC(keyOwner);
+                }
             }
 
             const [payoutEligible] = createAssertionHashAndCheckPayout(nodeLicenseId, challengeNumber, cachedBoostFactor[keyOwner], challenge.assertionStateRootOrConfirmData, challenge.challengerSignedHash);
@@ -527,8 +533,8 @@ async function listenForChallengesCallback(challengeNumber: bigint, challenge: C
         }
         nodeLicenseIdsRPC = await syncOwnerStakedKeysForRPC(owners, nodeLicenseIdsRPC);
         cachedLogger(`Check if nodeLicenses can be loaded: ${nodeLicenseIdsRPC}`);
-        // cachedLoadedOperatingKeys.mappedPools = await reloadPoolKeysForRPC(nodeLicenseIdsRPC);
-        await processNewChallenge(challengeNumber, challenge, nodeLicenseIdsRPC, sentryKeysMap, sentryWalletMap, mappedPools);
+        const sentryKeysMap = await reloadPoolKeysForRPC(nodeLicenseIdsRPC);
+        await processNewChallenge(challengeNumber, challenge, nodeLicenseIdsRPC, sentryKeysMap);
 
     }
 
@@ -603,10 +609,11 @@ async function syncOwnerStakedKeysForRPC(owners: string[], nodeLicenseIds: bigin
     return currentStakedKeys;
 }
 
-const reloadPoolKeysForRPC = async (nodeLicenseIds: bigint[]) => {
+const reloadPoolKeysForRPC = async (nodeLicenseIds: bigint[]): Promise<{ [keyId: string]: SentryKey }> => {
 
     const operatorPoolAddresses = await getOwnerOrDelegatePools(operatorAddress);
-
+    const sentryKeyMap: { [keyId: string]: SentryKey } = {};
+    //TODO only take whitelisted pools
 
     if (operatorPoolAddresses.length) {
 
@@ -620,16 +627,18 @@ const reloadPoolKeysForRPC = async (nodeLicenseIds: bigint[]) => {
             cachedLogger(`Fetching node licenses for pool ${pool}.`);
 
             const keys = await getKeysOfPool(pool);
-            // const poolInfo = await getPoolInfo(pool);
 
             for (const key of keys) {
                 if (ownerStakedKey[key.toString()]) {
                     //Make sure we don't keep them in this map so we don't remove them when re-syncing
                     delete ownerStakedKey[key.toString()];
                 }
-
                 isKYCMap[key.toString()] = true; //If key is in pool it has to be KYCd
                 currentPoolKeys[key.toString()] = pool;
+
+                sentryKeyMap[key.toString()].assignedPool = pool;
+                sentryKeyMap[key.toString()].keyId = key;
+                sentryKeyMap[key.toString()].mintTimeStamp = await retry(async () => await getMintTimestamp(key));
 
                 if (!nodeLicenseIds.includes(BigInt(key))) {
                     //Add the key from the pool to the list
@@ -646,6 +655,7 @@ const reloadPoolKeysForRPC = async (nodeLicenseIds: bigint[]) => {
                         if (!keyToOwner[key.toString()] && isKYCMap[key.toString()] === true) {
                             //This key came from an owner not a pool, save the owner
                             keyToOwner[key.toString()] = nodeLicenseInfo.ownerPublicKey;
+                            sentryKeyMap[key.toString()].owner = nodeLicenseInfo.ownerPublicKey;
                         }
 
                         //set the owner to the pool for the batch claim later
@@ -667,6 +677,8 @@ const reloadPoolKeysForRPC = async (nodeLicenseIds: bigint[]) => {
                     isKYCMap[key.toString()] = false; //Remove kyc cache
 
                     if (keyToOwner[key]) {
+
+                        sentryKeyMap[key].owner = key;
                         //If the key was in the list before any pools
                         //We just want to update the owner back to the key owner
                         const nodeLicenseInfo = nodeLicenseStatusMap.get(BigInt(key));
@@ -692,6 +704,7 @@ const reloadPoolKeysForRPC = async (nodeLicenseIds: bigint[]) => {
 
         //Update current key to pool map
         keyIdToPoolAddress = currentPoolKeys;
+        
 
     } else {
 
@@ -700,10 +713,14 @@ const reloadPoolKeysForRPC = async (nodeLicenseIds: bigint[]) => {
         if (poolKeys.length > 0) {
             for (const key of poolKeys) {
                 const indexOfKeyInList = nodeLicenseIds.indexOf(BigInt(key));
+                sentryKeyMap[key].mintTimeStamp = await retry(async () => await getMintTimestamp(BigInt(key)));
                 if (indexOfKeyInList > -1) {
 
                     isKYCMap[key.toString()] = false; //Remove kyc cache
                     if (keyToOwner[key]) {
+
+                        sentryKeyMap[key].owner = key;
+
                         //If we had this key as approved operator / owner we just map back the owner key
                         const nodeLicenseInfo = nodeLicenseStatusMap.get(BigInt(key));
                         if (nodeLicenseInfo) {
@@ -717,13 +734,12 @@ const reloadPoolKeysForRPC = async (nodeLicenseIds: bigint[]) => {
                         nodeLicenseStatusMap.delete(BigInt(key));
                         safeStatusCallback();
                     }
-
                 }
             }
-
             keyIdToPoolAddress = {};
         }
     }
+    return sentryKeyMap;
 }
 
 
@@ -948,9 +964,9 @@ export async function operatorRuntime(
         }
         nodeLicenseIdsRPC = await syncOwnerStakedKeysForRPC(owners, nodeLicenseIdsRPC);
         cachedLogger(`Check if nodeLicenses can be loaded: ${nodeLicenseIdsRPC}`);
-        cachedLoadedOperatingKeys.mappedPools = await reloadPoolKeysForRPC(nodeLicenseIdsRPC);
+        const sentryKeysMap = await reloadPoolKeysForRPC(nodeLicenseIdsRPC);
 
-        await processNewChallenge(latestChallenge[0], latestChallenge[1], nodeLicenseIdsRPC, sentryKeysMap, sentryWalletMap, mappedPools, refereeConfig);
+        await processNewChallenge(latestChallenge[0], latestChallenge[1], nodeLicenseIdsRPC, sentryKeysMap);
 
     }
 
