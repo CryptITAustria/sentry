@@ -652,7 +652,7 @@ const reloadPoolKeysForRPC = async (nodeLicenseIds: bigint[]): Promise<{ [keyId:
                     //We already operate that key, if its from an owner, we need to remember the previous saved owner
                     const nodeLicenseInfo = nodeLicenseStatusMap.get(key);
                     if (nodeLicenseInfo) {
-                        if (!keyToOwner[key.toString()] && isKYCMap[key.toString()] === true) {
+                        if (!keyToOwner[key.toString()]) {
                             //This key came from an owner not a pool, save the owner
                             keyToOwner[key.toString()] = nodeLicenseInfo.ownerPublicKey;
                             sentryKeyMap[key.toString()].owner = nodeLicenseInfo.ownerPublicKey;
