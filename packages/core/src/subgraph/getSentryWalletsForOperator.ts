@@ -51,6 +51,10 @@ export async function getSentryWalletsForOperator(
 
   const result = await client.request(query) as any;
 
+  if (!result) {
+    throw new Error("Subgraph connection failed");
+  };
+
   let wallets: SentryWallet[] = result.sentryWallets;
   let pools: PoolInfo[] = result.poolInfos;
 

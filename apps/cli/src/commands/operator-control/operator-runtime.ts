@@ -1,6 +1,6 @@
 import Vorpal from "vorpal";
 import Logger from "../../utils/Logger.js"
-import { getSignerFromPrivateKey, operatorRuntime, Challenge, PublicNodeBucketInformation, getSentryWalletsForOperator } from "@sentry/core";
+import { getSignerFromPrivateKey, operatorRuntime, Challenge, PublicNodeBucketInformation, getSentryWalletsForOperator, listOwnersForOperator, getOwnerOrDelegatePools } from "@sentry/core";
 
 /**
  * Starts a runtime of the operator.
@@ -38,26 +38,49 @@ export function bootOperator(cli: Vorpal) {
 
             // If useWhitelist is false, selectedOwners will be undefined
             let selectedOwners;
+            let rpcWallets;
+            let rpcPools;
             if (useWhitelist) {
 
                 const operatorAddress = await signer.getAddress();
-                const { wallets, pools } = await getSentryWalletsForOperator(null, operatorAddress);
-
                 const choices: Array<{ name: string, value: string }> = [];
+                try {
+                    const { wallets, pools } = await getSentryWalletsForOperator(null, operatorAddress);
 
-                wallets.forEach(w => {
-                    choices.push({
-                        name: `Owner: ${w.address}${operatorAddress.toLowerCase() == w.address.toLowerCase() ? " (your wallet)" : ""}`,
-                        value: w.address
+                    wallets.forEach(w => {
+                        choices.push({
+                            name: `Owner: ${w.address}${operatorAddress.toLowerCase() == w.address.toLowerCase() ? " (your wallet)" : ""}`,
+                            value: w.address
+                        })
                     })
-                })
 
-                pools.forEach(p => {
-                    choices.push({
-                        name: `Pool: ${p.metadata[0]} (${p.address})`,
-                        value: p.address
+                    pools.forEach(p => {
+                        choices.push({
+                            name: `Pool: ${p.metadata[0]} (${p.address})`,
+                            value: p.address
+                        })
                     })
-                })
+
+                } catch (error) {
+                    Logger.log("Subgraph connection failed. Fallback to RPC call");
+                    
+                    rpcWallets = await listOwnersForOperator(operatorAddress);
+                    rpcPools = await getOwnerOrDelegatePools(operatorAddress);
+
+                    rpcWallets?.forEach(w => {
+                        choices.push({
+                            name: `Owner: ${w.toLowerCase()}`,
+                            value: w
+                        })
+                    })
+
+                    rpcPools?.forEach(p => {
+                        choices.push({
+                            name: `Pool: ${p.toLowerCase()})`,
+                            value: p
+                        })
+                    })
+                }
 
                 const ownerPrompt: Vorpal.PromptObject = {
                     type: 'checkbox',
