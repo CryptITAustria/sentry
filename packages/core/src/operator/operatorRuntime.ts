@@ -17,6 +17,9 @@ import {
 import axios from "axios";
 import { PoolInfo, RefereeConfig, SentryKey, SentryWallet, Submission } from "@sentry/sentry-subgraph-client";
 import { GraphQLClient } from 'graphql-request'
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 export enum NodeLicenseStatus {
     WAITING_IN_QUEUE = "Booting Operator For Key", // waiting to do an action, but in a queue
@@ -550,37 +553,51 @@ export async function operatorRuntime(
 ): Promise<() => Promise<void>> {
 
     let offset = 0;
+    const tableRows = [];
     while (true) {
         const challenges = await getLatestChallengeFromGraph(graphClient, 10, 10 * offset);
 
         if (challenges.length == 0) {
             logFunction("Finished");
+            arrayToCSV(tableRows);
             break;
         }
 
-        logFunction(`Processing ${10 * (offset + 1)} - ${10 * (offset + 1)} = ${challenges.length} challenges`);
+        logFunction(`Processing ${offset === 0 ? 1 : (10 * (offset))} - ${10 * (offset + 1)} = ${challenges.length} challenges`);
 
         for (let i = 0; i < challenges.length; i++) {
             const challenge = challenges[i];
 
-            const bcChallenge = await getChallenge(BigInt(challenge.challengeNumber));
-            if (!bcChallenge) {
-                logFunction("ERROR!!!! Did not find bc challenge " + challenge.challengeNumber.toString());
-                continue
+            const tableRow = {
+                challengeNumber: challenge.challengeNumber,
+                timeStamp: challenge.createdTimestamp,
+                amountClaimedByClaimers: challenge.amountClaimedByClaimers,
+                numberOfEligibleClaimers: challenge.numberOfEligibleClaimers,
+                submissionsClaimed: challenge.submissions.filter(s => s.claimed).length,
+                submissionsTotal: challenge.submissions.length
             }
 
-            if (challenge.amountClaimedByClaimers.toString() != bcChallenge.amountClaimedByClaimers.toString()) {
-                logFunction(`ERROR!!!! Challenge miss-match ${challenge.challengeNumber.toString()} Invalid value for amountClaimedByClaimers: graph: ${challenge.amountClaimedByClaimers.toString()} - bc: ${bcChallenge.amountClaimedByClaimers.toString()}`)
-            }
-            if (challenge.numberOfEligibleClaimers.toString() != bcChallenge.numberOfEligibleClaimers.toString()) {
-                logFunction(`ERROR!!!! Challenge miss-match ${challenge.challengeNumber.toString()} Invalid value for numberOfEligibleClaimers: graph: ${challenge.numberOfEligibleClaimers.toString()} - bc: ${bcChallenge.numberOfEligibleClaimers.toString()}`)
-            }
-            if (challenge.submissions.length.toString() != challenge.numberOfEligibleClaimers.toString()) {
-                logFunction(`ERROR!!!! Challenge miss-match ${challenge.challengeNumber.toString()} Invalid value for graph challenge.submissions.length: ${challenge.submissions.length}`)
-            }
-
+            tableRows.push(tableRow);
         }
         offset++
+    }
+
+    function arrayToCSV(data: Object[]): void {
+        const headers = Object.keys(data[0]).join(',');
+        const rows = data.map(obj => {
+            return Object.values(obj).join(',');
+        });
+        const csv = [headers, ...rows].join('\n');
+
+        const destination = path.join(os.homedir(), `challengeInfo${Date.now()}.csv`);
+
+        fs.writeFile(destination, csv, (err: any) => {
+            if (err) {
+                logFunction(`Error writing to file: ${err}`);
+            } else {
+                logFunction(`CSV file has been saved to "${destination}"`);
+            }
+        });
     }
 
     async function stop() {

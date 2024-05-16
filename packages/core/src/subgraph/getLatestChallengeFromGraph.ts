@@ -16,6 +16,7 @@ export async function getLatestChallengeFromGraph(
         amountClaimedByClaimers
         challengeNumber
         numberOfEligibleClaimers
+        createdTimestamp
         submissions(where: {eligibleForPayout: true} first: 5000, orderBy: nodeLicenseId, orderDirection: asc) {
           claimed
           eligibleForPayout
