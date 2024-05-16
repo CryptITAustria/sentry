@@ -72,9 +72,9 @@ const KEYS_PER_BATCH = 100;
 
 // Cache for rpc fallback
 const keyToOwner: { [keyId: string]: string } = {};
-let cachedOperatorWallets: string[];
+let cachedOperatorWallets: string[] = [];
 const mintTimestamps: { [nodeLicenseId: string]: bigint } = {};
-let cachedKeysOfOwner: { [keyId: string]: SentryKey };
+let cachedKeysOfOwner: { [keyId: string]: SentryKey } = {};
 
 const graphClient = new GraphQLClient(config.subgraphEndpoint);
 
@@ -608,9 +608,10 @@ const loadOperatorKeysFromGraph = async (
     const sentryKeysMap: { [keyId: string]: SentryKey } = {}
     const nodeLicenseIds: bigint[] = [];
 
+    cachedOperatorWallets = [];
     wallets.forEach(w => {
         sentryWalletMap[w.address] = w;
-        cachedOperatorWallets.push(w.address);
+        cachedOperatorWallets.push(w.address.toString());
     })
 
     let keyOfOwnerCount = 0;
@@ -639,7 +640,9 @@ const loadOperatorKeysFromGraph = async (
 
         mintTimestamps[s.keyId.toString()] = s.mintTimeStamp;
         keyToOwner[s.keyId.toString()] = s.owner;
-        cachedKeysOfOwner[s.keyId.toString()] = s;
+        if (cachedOperatorWallets.includes(s.owner)) {
+            cachedKeysOfOwner[s.keyId.toString()] = s;
+        }
     });
 
     //Cleanup removed keys from nodeLicenseStatusMap

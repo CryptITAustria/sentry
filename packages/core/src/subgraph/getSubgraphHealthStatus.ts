@@ -9,9 +9,8 @@ export async function getSubgraphHealthStatus(): Promise<{ healthy: boolean, err
     try {
         const url = `https://subgraph.satsuma-prod.com/f37507ea64fb/xai/sentry/status`;
         const response = await axios.get(url);
-
         if (response.status === 200) {
-            const status = response.data.data.indexingStatusForCurrentVersion.subgraph.health;
+            const status = response.data.data.indexingStatusForCurrentVersion.health;
             if (status != "healthy") {
                 return {
                     healthy: false,
