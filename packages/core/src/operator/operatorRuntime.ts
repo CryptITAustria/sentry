@@ -22,7 +22,8 @@ import {
     getMintTimestamp,
     listOwnersForOperator,
     getOwnerOfNodeLicense,
-    checkKycStatus
+    checkKycStatus,
+    getSubmissionsForChallenges
 } from "../index.js";
 import axios from "axios";
 import { PoolInfo, RefereeConfig, SentryKey, SentryWallet, Submission } from "@sentry/sentry-subgraph-client";
@@ -350,7 +351,7 @@ async function processClosedChallenges(
         //TODO If we don't have the sentryWalletMap we need to check each owner's KYC status here like we used to.
         // It should be cached on owner wallet bases but not across challenges, since KYC could be revoked
         let isKycApproved: boolean = isKYCMap[nodeLicenseId.toString()];
-        
+
         if (isKYCMap[nodeLicenseId.toString()] === undefined) {
             if (isRpcCall) {
                 [{ isKycApproved }] = await retry(async () => await checkKycStatus([nodeLicenseStatusMap.get(nodeLicenseId)!.ownerPublicKey]));
@@ -379,24 +380,26 @@ async function processClosedChallenges(
         }
 
         try {
-            let found;
+            let found: {
+                submission: Submission;
+                index: number;
+            } | null;
+            let foundRPC;
             if (isRpcCall) {
-                //TODO if rpc fallback get submissions from blockchain
-                found = null;
+                foundRPC = await retry(() => getSubmissionsForChallenges([challengeId], nodeLicenseId));
+                found = null
             } else {
                 found = findSubmissionOnSentryKey(sentryKey, challengeId);
             }
 
-            if (found) {
+            if (found || foundRPC) {
                 if (!challengeToEligibleNodeLicensesMap.has(challengeId)) {
                     challengeToEligibleNodeLicensesMap.set(challengeId, []);
                 }
                 challengeToEligibleNodeLicensesMap.get(challengeId)?.push(BigInt(nodeLicenseId));
 
-                if (!isRpcCall) {
-                    if (removeSubmissionAfterProcess) {
-                        sentryKey.submissions.splice(found.index, 1);
-                    }
+                if (removeSubmissionAfterProcess && found) {
+                    sentryKey.submissions.splice(found.index, 1);
                 }
             }
 
