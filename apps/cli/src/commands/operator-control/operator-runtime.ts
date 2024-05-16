@@ -66,6 +66,10 @@ export function bootOperator(cli: Vorpal) {
                     
                     rpcWallets = await listOwnersForOperator(operatorAddress);
                     rpcPools = await getOwnerOrDelegatePools(operatorAddress);
+                    choices.push({
+                        name: `Owner (Your Wallet): ${operatorAddress.toLowerCase()}`,
+                        value: operatorAddress
+                    })
 
                     rpcWallets?.forEach(w => {
                         choices.push({
@@ -76,7 +80,7 @@ export function bootOperator(cli: Vorpal) {
 
                     rpcPools?.forEach(p => {
                         choices.push({
-                            name: `Pool: ${p.toLowerCase()})`,
+                            name: `Pool: ${p.toLowerCase()}`,
                             value: p
                         })
                     })
