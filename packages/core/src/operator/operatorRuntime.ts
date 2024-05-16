@@ -348,8 +348,6 @@ async function processClosedChallenges(
         updateNodeLicenseStatus(nodeLicenseId, `Checking KYC Status`);
         safeStatusCallback();
 
-        //TODO If we don't have the sentryWalletMap we need to check each owner's KYC status here like we used to.
-        // It should be cached on owner wallet bases but not across challenges, since KYC could be revoked
         let isKycApproved: boolean = isKYCMap[nodeLicenseId.toString()];
 
         if (isKYCMap[nodeLicenseId.toString()] === undefined) {
@@ -612,6 +610,7 @@ const loadOperatorKeysFromGraph = async (
 
     wallets.forEach(w => {
         sentryWalletMap[w.address] = w;
+        cachedOperatorWallets.push(w.address);
     })
 
     let keyOfOwnerCount = 0;
@@ -637,6 +636,10 @@ const loadOperatorKeysFromGraph = async (
             ownerPublicKey: s.owner,
             status: NodeLicenseStatus.WAITING_IN_QUEUE,
         });
+
+        mintTimestamps[s.keyId.toString()] = s.mintTimeStamp;
+        keyToOwner[s.keyId.toString()] = s.owner;
+        cachedKeysOfOwner[s.keyId.toString()] = s;
     });
 
     //Cleanup removed keys from nodeLicenseStatusMap
@@ -656,12 +659,6 @@ const loadOperatorKeysFromGraph = async (
     safeStatusCallback();
     cachedLogger(`Total Sentry Keys fetched: ${nodeLicenseIds.length}.`);
     cachedLogger(`Fetched ${keyOfOwnerCount} keys of owners and ${keyOfPoolsCount} keys staked in pools.`);
-
-    //TODO save important data to cache
-    // mintTimestamps - for all keys we ever had we should remember the mintTimestamp
-    // keyToOwner - for every key we ever had remember the owner its never going to change
-    // cachedOperatorWallets - the operator wallets that we operate
-    // cachedKeysOfOwner - all the keys that came from an owner not a pool we operate
 
     return { wallets, sentryKeys, sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig };
 }
