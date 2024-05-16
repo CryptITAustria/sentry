@@ -21,7 +21,8 @@ import {
     getBoostFactor as getBoostFactorRPC,
     getMintTimestamp,
     listOwnersForOperator,
-    getOwnerOfNodeLicense
+    getOwnerOfNodeLicense,
+    checkKycStatus
 } from "../index.js";
 import axios from "axios";
 import { PoolInfo, RefereeConfig, SentryKey, SentryWallet, Submission } from "@sentry/sentry-subgraph-client";
@@ -323,14 +324,18 @@ async function processClosedChallenges(
     challengeId: bigint,
     nodeLicenseIds: bigint[],
     sentryKeysMap: { [keyId: string]: SentryKey },
-    sentryWalletMap: { [owner: string]: SentryWallet },
+    sentryWalletMap?: { [owner: string]: SentryWallet },
     removeSubmissionAfterProcess: boolean = false
 ) {
+    const isRpcCall = sentryWalletMap === undefined;
+
     const challengeToEligibleNodeLicensesMap: Map<bigint, bigint[]> = new Map();
 
     const beforeStatus: { [key: string]: string | undefined } = {}
 
     const nonKYCWallets: { [wallet: string]: number } = {}
+
+    const isKYCMap: { [keyId: string]: boolean } = {};
 
     for (const nodeLicenseId of nodeLicenseIds) {
 
@@ -344,28 +349,57 @@ async function processClosedChallenges(
 
         //TODO If we don't have the sentryWalletMap we need to check each owner's KYC status here like we used to.
         // It should be cached on owner wallet bases but not across challenges, since KYC could be revoked
-        if (!sentryWalletMap[sentryKey.owner].isKYCApproved) {
-            if (!nonKYCWallets[sentryKey.owner]) {
-                nonKYCWallets[sentryKey.owner] = 0;
-            }
-            nonKYCWallets[sentryKey.owner]++;
-            updateNodeLicenseStatus(nodeLicenseId, `Cannot Claim, Failed KYC`);
-            safeStatusCallback();
-            if (removeSubmissionAfterProcess) {
-                const found = findSubmissionOnSentryKey(sentryKey, challengeId);
-                if (found) {
-                    sentryKey.submissions.splice(found.index, 1);
+        if (isRpcCall) {
+            let isKycApproved: boolean = isKYCMap[nodeLicenseId.toString()];
+            if (!isKYCMap[nodeLicenseId.toString()]) {
+                try {
+                    [{ isKycApproved }] = await retry(async () => await checkKycStatus([nodeLicenseStatusMap.get(nodeLicenseId)!.ownerPublicKey]));
+                } catch (error: any) {
+                    cachedLogger(`Error checking KYC for Sentry Key ${nodeLicenseId} - ${error && error.message ? error.message : error}`);
+                    updateNodeLicenseStatus(nodeLicenseId, `Failed to check KYC status on RPC call.`);
+                    safeStatusCallback();
+                    continue;
                 }
             }
-            continue;
+
+            if (!isKycApproved) {
+                updateNodeLicenseStatus(nodeLicenseId, `Cannot Claim, Failed KYC`);
+                safeStatusCallback();
+                continue;
+            } else {
+                isKYCMap[nodeLicenseId.toString()] = true;
+                updateNodeLicenseStatus(nodeLicenseId, `Checking for unclaimed rewards for challenge '${challengeId}'.`);
+                safeStatusCallback();
+            }
         } else {
-            updateNodeLicenseStatus(nodeLicenseId, `Checking for unclaimed rewards for challenge '${challengeId}'.`);
-            safeStatusCallback();
+            if (!sentryWalletMap[sentryKey.owner].isKYCApproved) {
+                if (!nonKYCWallets[sentryKey.owner]) {
+                    nonKYCWallets[sentryKey.owner] = 0;
+                }
+                nonKYCWallets[sentryKey.owner]++;
+                updateNodeLicenseStatus(nodeLicenseId, `Cannot Claim, Failed KYC`);
+                safeStatusCallback();
+                if (removeSubmissionAfterProcess) {
+                    const found = findSubmissionOnSentryKey(sentryKey, challengeId);
+                    if (found) {
+                        sentryKey.submissions.splice(found.index, 1);
+                    }
+                }
+                continue;
+            } else {
+                updateNodeLicenseStatus(nodeLicenseId, `Checking for unclaimed rewards for challenge '${challengeId}'.`);
+                safeStatusCallback();
+            }
         }
 
         try {
-
-            const found = findSubmissionOnSentryKey(sentryKey, challengeId);
+            let found;
+            if (!isRpcCall) {
+                found = findSubmissionOnSentryKey(sentryKey, challengeId);
+            } else {
+                //TODO if rpc fallback get submissions from blockchain
+                found = null;
+            }
 
             if (found) {
                 if (!challengeToEligibleNodeLicensesMap.has(challengeId)) {
@@ -373,8 +407,10 @@ async function processClosedChallenges(
                 }
                 challengeToEligibleNodeLicensesMap.get(challengeId)?.push(BigInt(nodeLicenseId));
 
-                if (removeSubmissionAfterProcess) {
-                    sentryKey.submissions.splice(found.index, 1);
+                if (!isRpcCall) {
+                    if (removeSubmissionAfterProcess) {
+                        sentryKey.submissions.splice(found.index, 1);
+                    }
                 }
             }
 
