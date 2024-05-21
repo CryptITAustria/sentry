@@ -18,6 +18,8 @@ export async function getLatestChallengeFromGraph(
         challengeNumber
         numberOfEligibleClaimers
         createdTimestamp
+        amountForGasSubsidy
+        rewardAmountForClaimers
         submissions(first: 5000, orderBy: nodeLicenseId, orderDirection: asc) {
           claimed
           eligibleForPayout

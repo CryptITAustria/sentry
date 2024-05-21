@@ -20,6 +20,11 @@ export function exportChallengeInfo(cli: Vorpal) {
         .action(async function (this: Vorpal.CommandInstance) {
             let offset = 0;
             const tableRows = [];
+
+            let totalAmountForChallenges = 0n;
+            let totalAmountClaimedFromChallenges = 0n;
+            let totalAmountForSubsidy = 0n;
+
             while (true) {
                 const challenges = await retry(() => getLatestChallengeFromGraph(10, 10 * offset), 3);
 
@@ -37,10 +42,16 @@ export function exportChallengeInfo(cli: Vorpal) {
                         challengeNumber: challenge.challengeNumber,
                         timeStamp: `"${new Date(challenge.createdTimestamp * 1000).toLocaleString()}"`,
                         amountClaimedByClaimers: BigInt(challenge.amountClaimedByClaimers) / BigInt(10 ** 18),
+                        rewardAmountForClaimers: BigInt(challenge.rewardAmountForClaimers) / BigInt(10 ** 18),
+                        amountForGasSubsidy: BigInt(challenge.amountForGasSubsidy) / BigInt(10 ** 18),
                         numberOfEligibleClaimers: challenge.numberOfEligibleClaimers,
                         submissionsClaimed: challenge.submissions.filter(s => s.claimed).length,
                         submissionsTotal: challenge.submissions.length
                     }
+
+                    totalAmountForChallenges += BigInt(challenge.amountClaimedByClaimers) + BigInt(challenge.amountForGasSubsidy)
+                    totalAmountClaimedFromChallenges += BigInt(challenge.amountClaimedByClaimers)
+                    totalAmountForSubsidy += BigInt(challenge.amountForGasSubsidy)
 
                     tableRows.push(tableRow);
                 }
