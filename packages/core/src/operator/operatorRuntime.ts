@@ -580,7 +580,7 @@ export async function operatorRuntime(
     logFunction(`Started listener for new challenges.`);
 
     // Process open challenge
-    const[ openChallenge ] = await retry(() => getLatestChallengeFromGraph(graphClient));
+    const[ openChallenge ] = await retry(() => getLatestChallengeFromGraph());
 
     const latestClaimableChallenge = Number(openChallenge.challengeNumber) <= MAX_CHALLENGE_CLAIM_AMOUNT ? 1 : Number(openChallenge.challengeNumber) - MAX_CHALLENGE_CLAIM_AMOUNT;
     const { sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig } = await loadOperatingKeys(operatorAddress, operatorOwners, BigInt(latestClaimableChallenge));
