@@ -303,9 +303,9 @@ export function handleBatchRewardsClaimed(event: BatchRewardsClaimedEvent): void
     return;
   }
 
-  let unknownTransactionCall = "claimMultipleRewards";
+  let transactionCallType = "claimMultipleRewards";
   if (getTxSignatureFromEvent(event) != "0xb4d6b7df") {
-    unknownTransactionCall = "unknown";
+    transactionCallType = "unknown";
     log.warning("Custom function call for handleBatchRewardsClaimed, TX: " + event.transaction.hash.toHexString(), [])
   }
 
@@ -364,7 +364,7 @@ export function handleBatchRewardsClaimed(event: BatchRewardsClaimedEvent): void
         
         submission.claimTimestamp = event.block.timestamp
         submission.claimTxHash = event.transaction.hash
-        submission.claimedFrom = unknownTransactionCall
+        submission.claimedFrom = transactionCallType
         submission.save()
       }
     }
