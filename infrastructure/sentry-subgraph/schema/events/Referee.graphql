@@ -32,6 +32,7 @@ enum SubmissionInfo {
 enum ClaimInfo {
   claimRewards
   claimMultipleRewards
+  unclaimed
   unknown
 }
 
