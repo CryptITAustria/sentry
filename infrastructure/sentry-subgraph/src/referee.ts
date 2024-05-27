@@ -116,30 +116,20 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   //submitAssertionToChallenge = 0xb48985e4
   //submitMultipleAssertions = 0xec6564bf
   const transcationSignatur = getTxSignatureFromEvent(event)
-  if (transcationSignatur == "0xb48985e4") {
-    const decoded = ethereum.decode('(uint256,uint256,bytes)', dataToDecode)
-    if (decoded) {
-      assertionStateRootOrConfirmData = decoded.toTuple()[2].toBytes()
-      submission.submittedFrom = "submitAssertion"
-    } else {
-      log.warning("Failed to decode handleAssertionSubmitted (single) TX: " + event.transaction.hash.toHexString(), [])
-    }
-  } else if (transcationSignatur == "0xec6564bf") {
-    const decoded = ethereum.decode('(uint256[],uint256,bytes)', dataToDecode)
-    if (decoded) {
-      assertionStateRootOrConfirmData = decoded.toTuple()[2].toBytes()
-      submission.submittedFrom = "submitMultipleAssertions"
-    } else {
-      log.warning("Failed to decode handleAssertionSubmitted (multiple) TX: " + event.transaction.hash.toHexString(), [])
-    }
+  
+  let transactionCall = "submitAssertion"
+  if (transcationSignatur == "0xec6564bf") {
+    transactionCall = "submitMultipleAssertions"
   } else {
-    const decoded = ethereum.decode('(uint256[],uint256,bytes)', dataToDecode)
-    if (decoded) {
-      assertionStateRootOrConfirmData = decoded.toTuple()[2].toBytes()
-      submission.submittedFrom = "unknown"
-    } else {
-      log.warning("Failed to decode handleAssertionSubmitted (unknown) TX: " + event.transaction.hash.toHexString(), [])
-    }
+    transactionCall = "unknown"
+  }
+
+  const decoded = ethereum.decode('(uint256,uint256,bytes)', dataToDecode)
+  if (decoded) {
+    assertionStateRootOrConfirmData = decoded.toTuple()[2].toBytes()
+    submission.submittedFrom = "submitAssertion"
+  } else {
+    log.warning(`Failed to decode handleAssertionSubmitted (${transactionCall}) TX: ` + event.transaction.hash.toHexString(), [])
   }
 
   let stakeAmount = sentryWallet.v1EsXaiStakeAmount
@@ -311,9 +301,9 @@ export function handleBatchRewardsClaimed(event: BatchRewardsClaimedEvent): void
     return;
   }
 
-  let unknownTransactionCall = false;
+  let unknownTransactionCall = "claimMultipleRewards";
   if (getTxSignatureFromEvent(event) != "0xb4d6b7df") {
-    unknownTransactionCall = true;
+    unknownTransactionCall = "unknown";
     log.warning("Custom function call for handleBatchRewardsClaimed, TX: " + event.transaction.hash.toHexString(), [])
   }
 
@@ -372,10 +362,7 @@ export function handleBatchRewardsClaimed(event: BatchRewardsClaimedEvent): void
         
         submission.claimTimestamp = event.block.timestamp
         submission.claimTxHash = event.transaction.hash
-        submission.claimedFrom = "claimMultipleRewards"
-        if (unknownTransactionCall) {
-          submission.claimedFrom = "unknown"
-        }
+        submission.claimedFrom = unknownTransactionCall
         submission.save()
       }
     }
