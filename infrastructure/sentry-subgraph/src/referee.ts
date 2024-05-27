@@ -117,8 +117,10 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   //submitMultipleAssertions = 0xec6564bf
   const transcationSignatur = getTxSignatureFromEvent(event)
   
-  let transactionCall = "submitAssertion"
-  if (transcationSignatur == "0xec6564bf") {
+  let transactionCall = "";
+  if (transcationSignatur == "0xb48985e4") {
+    transactionCall = "submitAssertion"
+  } else if (transcationSignatur == "0xec6564bf") {
     transactionCall = "submitMultipleAssertions"
   } else {
     transactionCall = "unknown"
@@ -127,7 +129,7 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   const decoded = ethereum.decode('(uint256,uint256,bytes)', dataToDecode)
   if (decoded) {
     assertionStateRootOrConfirmData = decoded.toTuple()[2].toBytes()
-    submission.submittedFrom = "submitAssertion"
+    submission.submittedFrom = transactionCall
   } else {
     log.warning(`Failed to decode handleAssertionSubmitted (${transactionCall}) TX: ` + event.transaction.hash.toHexString(), [])
   }
