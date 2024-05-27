@@ -23,6 +23,18 @@ type Challenge @entity(immutable: false) {
   submissions: [Submission!]! @derivedFrom(field: "challenge")
 }
 
+enum SubmissionInfo {
+  submitAssertion
+  submitMultipleAssertions
+  unknown
+}
+
+enum ClaimInfo {
+  claimRewards
+  claimMultipleRewards
+  unknown
+}
+
 type Submission @entity(immutable: false) {
   id: String!
   challengeNumber: BigInt!
@@ -37,6 +49,8 @@ type Submission @entity(immutable: false) {
   claimTxHash: Bytes!
   sentryKey: SentryKey!
   challenge: Challenge!
+  submittedFrom: SubmissionInfo!
+  claimedFrom: ClaimInfo!
 }
 
 type SentryWallet @entity(immutable: false) {
