@@ -109,6 +109,8 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   submission.createdTxHash = event.transaction.hash
   submission.claimTimestamp = BigInt.fromI32(0)
   submission.claimTxHash = Bytes.fromI32(0)
+  submission.submittedFrom = "unknown"
+  submission.claimedFrom = "unknown"
 
   let assertionStateRootOrConfirmData: Bytes = Bytes.fromI32(0);
   const dataToDecode = getInputFromEvent(event, true)
@@ -119,6 +121,7 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
     const decoded = ethereum.decode('(uint256,uint256,bytes)', dataToDecode)
     if (decoded) {
       assertionStateRootOrConfirmData = decoded.toTuple()[2].toBytes()
+      submission.submittedFrom = "submitAssertion"
     } else {
       log.warning("Failed to decode handleAssertionSubmitted (single) TX: " + event.transaction.hash.toHexString(), [])
     }
@@ -126,6 +129,7 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
     const decoded = ethereum.decode('(uint256[],uint256,bytes)', dataToDecode)
     if (decoded) {
       assertionStateRootOrConfirmData = decoded.toTuple()[2].toBytes()
+      submission.submittedFrom = "submitMultipleAssertions"
     } else {
       log.warning("Failed to decode handleAssertionSubmitted (multiple) TX: " + event.transaction.hash.toHexString(), [])
     }
@@ -244,6 +248,7 @@ export function handleRewardsClaimed(event: RewardsClaimedEvent): void {
 
           submission.claimTimestamp = event.block.timestamp
           submission.claimTxHash = event.transaction.hash
+          submission.claimedFrom = "claimRewards"
 
           submission.save()
           amountClaimedByClaimers = amountClaimedByClaimers.plus(event.params.amount)
@@ -276,6 +281,7 @@ export function handleRewardsClaimed(event: RewardsClaimedEvent): void {
       submission.claimAmount = event.params.amount
       submission.claimTimestamp = event.block.timestamp
       submission.claimTxHash = event.transaction.hash
+      submission.claimedFrom = "claimRewards"
       submission.save()
 
       challenge.amountClaimedByClaimers = challenge.amountClaimedByClaimers.plus(event.params.amount)
@@ -357,6 +363,7 @@ export function handleBatchRewardsClaimed(event: BatchRewardsClaimedEvent): void
         
         submission.claimTimestamp = event.block.timestamp
         submission.claimTxHash = event.transaction.hash
+        submission.claimedFrom = "claimMultipleRewards"
         submission.save()
       }
     }
