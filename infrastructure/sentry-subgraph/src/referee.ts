@@ -109,15 +109,14 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   submission.createdTxHash = event.transaction.hash
   submission.claimTimestamp = BigInt.fromI32(0)
   submission.claimTxHash = Bytes.fromI32(0)
-  submission.submittedFrom = "unknown"
-  submission.claimedFrom = "unknown"
+  submission.claimedFrom = "unclaimed"
 
   let assertionStateRootOrConfirmData: Bytes = Bytes.fromI32(0);
   const dataToDecode = getInputFromEvent(event, true)
   //submitAssertionToChallenge = 0xb48985e4
   //submitMultipleAssertions = 0xec6564bf
-  const isSubmitSingle = getTxSignatureFromEvent(event) == "0xb48985e4"
-  if (isSubmitSingle) {
+  const transcationSignatur = getTxSignatureFromEvent(event)
+  if (transcationSignatur == "0xb48985e4") {
     const decoded = ethereum.decode('(uint256,uint256,bytes)', dataToDecode)
     if (decoded) {
       assertionStateRootOrConfirmData = decoded.toTuple()[2].toBytes()
@@ -125,13 +124,21 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
     } else {
       log.warning("Failed to decode handleAssertionSubmitted (single) TX: " + event.transaction.hash.toHexString(), [])
     }
-  } else {
+  } else if (transcationSignatur == "0xec6564bf") {
     const decoded = ethereum.decode('(uint256[],uint256,bytes)', dataToDecode)
     if (decoded) {
       assertionStateRootOrConfirmData = decoded.toTuple()[2].toBytes()
       submission.submittedFrom = "submitMultipleAssertions"
     } else {
       log.warning("Failed to decode handleAssertionSubmitted (multiple) TX: " + event.transaction.hash.toHexString(), [])
+    }
+  } else {
+    const decoded = ethereum.decode('(uint256[],uint256,bytes)', dataToDecode)
+    if (decoded) {
+      assertionStateRootOrConfirmData = decoded.toTuple()[2].toBytes()
+      submission.submittedFrom = "unknown"
+    } else {
+      log.warning("Failed to decode handleAssertionSubmitted (unknown) TX: " + event.transaction.hash.toHexString(), [])
     }
   }
 
@@ -304,7 +311,9 @@ export function handleBatchRewardsClaimed(event: BatchRewardsClaimedEvent): void
     return;
   }
 
+  let unknownTransactionCall = false;
   if (getTxSignatureFromEvent(event) != "0xb4d6b7df") {
+    unknownTransactionCall = true;
     log.warning("Custom function call for handleBatchRewardsClaimed, TX: " + event.transaction.hash.toHexString(), [])
   }
 
@@ -364,6 +373,9 @@ export function handleBatchRewardsClaimed(event: BatchRewardsClaimedEvent): void
         submission.claimTimestamp = event.block.timestamp
         submission.claimTxHash = event.transaction.hash
         submission.claimedFrom = "claimMultipleRewards"
+        if (unknownTransactionCall) {
+          submission.claimedFrom = "unknown"
+        }
         submission.save()
       }
     }
