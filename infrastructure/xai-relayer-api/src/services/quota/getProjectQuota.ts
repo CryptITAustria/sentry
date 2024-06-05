@@ -29,27 +29,24 @@ export async function getProjectQuota(relayerId: string): Promise<Quota> {
     const timeFromLastRefill = Date.now() - lastRefill;
     const passedRefillIntervals = Math.ceil(timeFromLastRefill / project.refillInterval);
     const nextRefill = lastRefill + ((passedRefillIntervals + 1) * project.refillInterval);
-    
+
     const refillAvailable = timeFromLastRefill > project.refillInterval;
+
+    let projectQuota: Quota = {
+        balance: project.projectBalance,
+        nextRefill: nextRefill,
+        nextRefillAmount: project.projectLimit - project.projectBalance,
+        refillAvailable: refillAvailable,
+        lastRefill: null
+    }
 
     if (refillAvailable) {
         const newLastRefill = lastRefill + (passedRefillIntervals) * project.refillInterval;
 
-        return {
-            balance: project.projectLimit,
-            nextRefill: nextRefill,
-            nextRefillAmount: 0,
-            refillAvailable: refillAvailable,
-            lastRefill: new Date(newLastRefill)
-        };
-
-    } else {
-        return {
-            balance: project.projectBalance,
-            nextRefill: nextRefill,
-            nextRefillAmount: project.projectLimit - project.projectBalance,
-            refillAvailable: refillAvailable,
-            lastRefill: null
-        };
+        projectQuota.balance = project.projectLimit;
+        projectQuota.nextRefillAmount = 0;
+        projectQuota.lastRefill = new Date(newLastRefill);
     }
+
+    return projectQuota;
 }
