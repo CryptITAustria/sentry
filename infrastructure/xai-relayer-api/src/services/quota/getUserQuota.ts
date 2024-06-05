@@ -46,13 +46,12 @@ export async function getUserQuota(walletAddress: string, relayerId: string): Pr
         balance: userProjectInfo.balance,
         nextRefill: nextRefill,
         nextRefillAmount: userProjectInfo.project.userLimit - userProjectInfo.balance,
-        refillAvailable: refillAvailable,
         lastRefill: null
     }
 
     if (refillAvailable) {
         const newLastRefill = lastRefill + (passedRefillIntervals * userRefillInterval);
-        
+
         userQuota.balance = userProjectInfo.project.userLimit;
         userQuota.nextRefillAmount = 0;
         userQuota.lastRefill = new Date(newLastRefill);

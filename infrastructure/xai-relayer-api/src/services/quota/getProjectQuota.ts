@@ -4,7 +4,6 @@ export type Quota = {
     balance: number;
     nextRefill: number;
     nextRefillAmount: number;
-    refillAvailable: boolean;
     lastRefill: Date | null;
 }
 
@@ -36,7 +35,6 @@ export async function getProjectQuota(relayerId: string): Promise<Quota> {
         balance: project.projectBalance,
         nextRefill: nextRefill,
         nextRefillAmount: project.projectLimit - project.projectBalance,
-        refillAvailable: refillAvailable,
         lastRefill: null
     }
 
