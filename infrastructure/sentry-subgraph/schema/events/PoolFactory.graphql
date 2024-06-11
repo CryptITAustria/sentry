@@ -39,3 +39,16 @@ type PoolFactoryConfig @entity(immutable: false) {
   unstakeEsXaiDelayPeriod: BigInt!
   updateRewardBreakdownDelayPeriod: BigInt!
 }
+
+type PoolChallenges @entity(immutable: false) {
+  id: String!
+  pool: PoolInfo!
+  challenge: Challenge!
+  submittedKeyCount: BigInt! # only winning keys
+  claimKeyCount: BigInt!
+  totalStakedEsXaiAmount: BigInt!
+  totalStakedKeyAmount: BigInt!
+  totalClaimedEsXaiAmount: BigInt!
+  eligibleSubmissionsCount: BigInt!
+  #TODO Ask Chris about timestamp to be used
+}

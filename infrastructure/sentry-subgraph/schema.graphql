@@ -19,7 +19,7 @@
 
 ######################################################################
 # NodeLicense.graphql                                                #
-# schema\events\NodeLicense.graphql                                  #
+# schema/events/NodeLicense.graphql                                  #
 ######################################################################
 type SentryKey @entity(immutable: false) {
   id: String!
@@ -33,7 +33,7 @@ type SentryKey @entity(immutable: false) {
 
 ######################################################################
 # PoolFactory.graphql                                                #
-# schema\events\PoolFactory.graphql                                  #
+# schema/events/PoolFactory.graphql                                  #
 ######################################################################
 type PoolInfo @entity(immutable: false) {
   id: String!
@@ -77,10 +77,22 @@ type PoolFactoryConfig @entity(immutable: false) {
   updateRewardBreakdownDelayPeriod: BigInt!
 }
 
+type PoolChallenges @entity(immutable: false) {
+  id: String!
+  pool: PoolInfo!
+  challenge: Challenge!
+  submittedKeyCount: BigInt! # only winning keys
+  claimKeyCount: BigInt!
+  totalStakedEsXaiAmount: BigInt!
+  totalStakedKeyAmount: BigInt!
+  totalClaimedEsXaiAmount: BigInt!
+  eligibleSubmissionsCount: BigInt!
+  #TODO Ask Chris about timestamp to be used
+}
 
 ##############################################################
 # Referee.graphql                                            #
-# schema\events\Referee.graphql                              #
+# schema/events/Referee.graphql                              #
 ##############################################################
 enum ChallengeStatus {
   OpenForSubmissions
@@ -160,7 +172,7 @@ type RefereeConfig @entity(immutable: false) {
 
 ######################################################
 # Xai.graphql                                        #
-# schema\events\Xai.graphql                          #
+# schema/events/Xai.graphql                          #
 ######################################################
 type ConvertedToEsXaiEvent @entity(immutable: true) {
     id: Bytes!

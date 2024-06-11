@@ -630,6 +630,152 @@ export class PoolFactoryConfig extends Entity {
   }
 }
 
+export class PoolChallenges extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save PoolChallenges entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type PoolChallenges must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("PoolChallenges", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): PoolChallenges | null {
+    return changetype<PoolChallenges | null>(
+      store.get_in_block("PoolChallenges", id),
+    );
+  }
+
+  static load(id: string): PoolChallenges | null {
+    return changetype<PoolChallenges | null>(store.get("PoolChallenges", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get pool(): string {
+    let value = this.get("pool");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set pool(value: string) {
+    this.set("pool", Value.fromString(value));
+  }
+
+  get challenge(): string {
+    let value = this.get("challenge");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set challenge(value: string) {
+    this.set("challenge", Value.fromString(value));
+  }
+
+  get submittedKeyCount(): BigInt {
+    let value = this.get("submittedKeyCount");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set submittedKeyCount(value: BigInt) {
+    this.set("submittedKeyCount", Value.fromBigInt(value));
+  }
+
+  get claimKeyCount(): BigInt {
+    let value = this.get("claimKeyCount");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set claimKeyCount(value: BigInt) {
+    this.set("claimKeyCount", Value.fromBigInt(value));
+  }
+
+  get totalStakedEsXaiAmount(): BigInt {
+    let value = this.get("totalStakedEsXaiAmount");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalStakedEsXaiAmount(value: BigInt) {
+    this.set("totalStakedEsXaiAmount", Value.fromBigInt(value));
+  }
+
+  get totalStakedKeyAmount(): BigInt {
+    let value = this.get("totalStakedKeyAmount");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalStakedKeyAmount(value: BigInt) {
+    this.set("totalStakedKeyAmount", Value.fromBigInt(value));
+  }
+
+  get totalClaimedEsXaiAmount(): BigInt {
+    let value = this.get("totalClaimedEsXaiAmount");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalClaimedEsXaiAmount(value: BigInt) {
+    this.set("totalClaimedEsXaiAmount", Value.fromBigInt(value));
+  }
+
+  get eligibleSubmissionsCount(): BigInt {
+    let value = this.get("eligibleSubmissionsCount");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set eligibleSubmissionsCount(value: BigInt) {
+    this.set("eligibleSubmissionsCount", Value.fromBigInt(value));
+  }
+}
+
 export class Challenge extends Entity {
   constructor(id: string) {
     super();
