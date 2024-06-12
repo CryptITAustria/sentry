@@ -149,10 +149,12 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   let stakeAmount = sentryWallet.v1EsXaiStakeAmount
   let keyCount = sentryWallet.keyCount.minus(sentryWallet.stakedKeyCount)
   // This if statement is only triggered if transaction was originated by a pool
-  if (sentryKey.assignedPool.toHexString() != new Address(0).toHexString()) {
+  const isAssignedKeyToPool = sentryKey.assignedPool.toHexString() != new Address(0).toHexString();
+  if (isAssignedKeyToPool) {
     const pool = PoolInfo.load(sentryKey.assignedPool.toHexString())
     stakeAmount = pool!.totalStakedEsXaiAmount
     keyCount = pool!.totalStakedKeyAmount
+  }
 
   const maxStakeAmount = getMaxStakeAmount(stakeAmount, keyCount, refereeConfig.maxStakeAmountPerLicense)
   const boostFactor = getBoostFactor(
@@ -175,7 +177,7 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   submission.assertionsStateRootOrConfirmData = assertionStateRootOrConfirmData.toHexString()
   submission.save()
 
-
+  if (isAssignedKeyToPool) {
     let poolChallenges = PoolChallenges.load(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
     if (poolChallenges == null) {
       poolChallenges = new PoolChallenges(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
@@ -189,16 +191,16 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
     }
 
     poolChallenges.submittedKeyCount = poolChallenges.submittedKeyCount.plus(BigInt.fromI32(1))
+    poolChallenges.save()
 
     if (submission.eligibleForPayout) {
       poolChallenges.eligibleSubmissionsCount = poolChallenges.eligibleSubmissionsCount.plus(BigInt.fromI32(1))
+    } 
+  } else {
+    if (submission.eligibleForPayout) {
+      challenge.numberOfEligibleClaimers = challenge.numberOfEligibleClaimers.plus(BigInt.fromI32(1))
+      challenge.save()
     }
-    poolChallenges.save()
-  }
-
-  if (submission.eligibleForPayout) {
-    challenge.numberOfEligibleClaimers = challenge.numberOfEligibleClaimers.plus(BigInt.fromI32(1))
-    challenge.save()
   }
 }
 
