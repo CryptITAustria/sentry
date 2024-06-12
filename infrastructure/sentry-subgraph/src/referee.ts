@@ -365,10 +365,12 @@ export function handleBatchRewardsClaimed(event: BatchRewardsClaimedEvent): void
     log.warning("Failed to decode handleBatchRewardsClaimed TX: " + event.transaction.hash.toHexString(), [])
     return;
   }
-
+  // Starting reward at 0 to account for case where number of eligible claimers is 0 causes division by 0
+  let reward = BigInt.fromI32(0);
   const nodeLicenseIds = decoded.toTuple()[0].toBigIntArray()
-  const reward = challenge.rewardAmountForClaimers.div(challenge.numberOfEligibleClaimers)
-
+  if(challenge.numberOfEligibleClaimers.gt(BigInt.fromI32(0))) {
+  reward = challenge.rewardAmountForClaimers.div(challenge.numberOfEligibleClaimers)
+  }
   for (let i = 0; i < nodeLicenseIds.length; i++) {
     const sentryKey = SentryKey.load(nodeLicenseIds[i].toString())
 
