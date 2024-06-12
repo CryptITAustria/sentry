@@ -1,4 +1,4 @@
-import { iconType } from "@/app/components/dashboard/constants/constants";
+import { StaticImageData } from "next/image";
 
 /* export type Pool = {
 	poolAddress: string;
@@ -40,6 +40,7 @@ export type TierInfo = {
 	minValue: number;
 	reward: string;
 	index: number;
+	label?: StaticImageData;
 };
 
 export type UserPoolDataType = {
@@ -61,7 +62,7 @@ export type PoolInfo = {
 	ownerShare: number;										// The share for the pool owner
 	keyBucketShare: number;									// The share for the key staker
 	stakedBucketShare: number;								// The share for the esXAI staker
-	maxKeyCount: number;									// maximum number of NodeLicenses that can be allocated to the pool
+	maxKeyCount?: number;									// maximum number of NodeLicenses that can be allocated to the pool
 	userStakedEsXaiAmount?: number;							// current amount of esXAI the given user has staked on the pool
 	unstakeRequestkeyAmount?: number,						// pending unstake key amount from user
 	unstakeRequestesXaiAmount?: number,						// pending unstake esXAI amount from user
@@ -76,7 +77,8 @@ export type PoolInfo = {
 	updateSharesTimestamp: number;							// timestamp when the pending shares will take effect, 0 if there are no pending shares
 	ownerStakedKeys: number;								// Amount of keys staked by the owner
 	ownerRequestedUnstakeKeyAmount: number;					// Amount of unstake requested keys by the owner
-	ownerLatestUnstakeRequestCompletionTime: number;		// timestamp when the genesis key is claimable
+	ownerLatestUnstakeRequestCompletionTime?: number;		// timestamp when the genesis key is claimable
+	visibility?: string;
 }
 
 export type CreatePool = {

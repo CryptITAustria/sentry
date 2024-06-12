@@ -53,6 +53,7 @@ type PoolInfo @entity(immutable: false) {
   ownerRequestedUnstakeKeyAmount: BigInt!
   ownerLatestUnstakeRequestCompletionTime: BigInt!
   createdTimestamp: BigInt!
+  poolChallenges: [PoolChallenges!]! @derivedFrom(field: "pool")
 }
 
 type UnstakeRequest @entity(immutable: false) {
@@ -77,6 +78,17 @@ type PoolFactoryConfig @entity(immutable: false) {
   updateRewardBreakdownDelayPeriod: BigInt!
 }
 
+type PoolChallenges @entity(immutable: false) {
+  id: String!
+  pool: PoolInfo!
+  challenge: Challenge!
+  submittedKeyCount: BigInt! # only winning keys
+  claimKeyCount: BigInt!
+  totalStakedEsXaiAmount: BigInt!
+  totalStakedKeyAmount: BigInt!
+  totalClaimedEsXaiAmount: BigInt!
+  eligibleSubmissionsCount: BigInt!
+}
 
 ##############################################################
 # Referee.graphql                                            #
@@ -107,6 +119,18 @@ type Challenge @entity(immutable: false) {
   submissions: [Submission!]! @derivedFrom(field: "challenge")
 }
 
+enum SubmittedFrom {
+  submitAssertion
+  submitMultipleAssertions
+  unknown
+}
+
+enum ClaimedFrom {
+  claimRewards
+  claimMultipleRewards
+  unclaimed
+}
+
 type Submission @entity(immutable: false) {
   id: String!
   challengeNumber: BigInt!
@@ -121,6 +145,8 @@ type Submission @entity(immutable: false) {
   claimTxHash: Bytes!
   sentryKey: SentryKey!
   challenge: Challenge!
+  submittedFrom: SubmittedFrom!
+  claimedFrom: ClaimedFrom!
 }
 
 type SentryWallet @entity(immutable: false) {

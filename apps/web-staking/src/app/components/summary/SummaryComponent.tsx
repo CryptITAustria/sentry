@@ -17,19 +17,20 @@ import {
 } from "@/services/web3.service";
 import { WriteFunctions, executeContractWrite } from "@/services/web3.writes";
 
-import { ButtonBack } from "../buttons/ButtonsComponent";
 import {
   loadingNotification,
   updateNotification,
 } from "../notifications/NotificationsComponent";
 import { Id } from "react-toastify";
 import { useGetTiers } from "@/app/hooks/useGetTiers";
+import { ButtonBack } from "@/app/components/ui/buttons";
+import { PoolInfo } from "@/types/Pool";
 
-const SummaryComponent = ({ isBannedPool }: { isBannedPool: boolean }) => {
+const SummaryComponent = ({ isBannedPool, poolFromDb }: { isBannedPool: boolean, poolFromDb?: PoolInfo }) => {
   const router = useRouter();
+  const activePage = sessionStorage.getItem("activePage");
   const [refreshPoolInfo, setRefreshPoolInfo] = useState(false);
   const [refreshUnstakeRequests, setRefreshUnstakeRequests] = useState(false);
-  // const [poolInfo, setData] = useState<PoolInfo>();
   const { tiers } = useGetTiers();
 
   const { address, chainId } = useAccount();
@@ -165,17 +166,28 @@ const SummaryComponent = ({ isBannedPool }: { isBannedPool: boolean }) => {
   return (
     <>
       {poolInfo && (
-        <div className="flex w-full flex-col items-center px-4 lg:px-[75px] xl:px-[150px]">
+        <div className="flex w-full flex-col items-center lg:px-[35px] xl:pr-[56px] px-0">
           <>
-            <HeadlineComponent poolInfo={poolInfo} walletAddress={address} isBannedPool={isBannedPool} />
-            <div className="mt-2 flex w-full justify-start xl:hidden">
-              <ButtonBack btnText={"Back"} onClick={window && window.history.length > 2 ? () => router.back() : () => router.push(`/staking?chainId=${chainId}`)} />
+            <div className="mt-2 flex w-full justify-start lg:z-40">
+              <ButtonBack
+                btnText={`Back to ${activePage === "/pool" ? "my pools" : "staking"}`}
+                fill="#FF2C3A"
+                onClick={activePage === "/pool" ? () => router.push(`/pool`) : () => router.push(`/staking?chainId=${chainId}`)}
+                extraClasses="uppercase text-white text-lg font-bold lg:mb-8 mb-4 lg:mx-0 mx-[17px]"
+              />
             </div>
+            <HeadlineComponent
+              poolInfo={poolInfo}
+              walletAddress={address}
+              isBannedPool={isBannedPool}
+              ownerLatestUnstakeRequestCompletionTime={(poolFromDb ? (poolFromDb.ownerLatestUnstakeRequestCompletionTime || 0) : 0)}
+            />
             <SummaryDescriptions
               poolInfo={poolInfo}
               onClaim={onClaim}
               chainId={chainId}
               transactionLoading={isLoading}
+              address={address}
             />
 
             {poolInfo && <PoolTierCard poolInfo={poolInfo} tiers={tiers} />}

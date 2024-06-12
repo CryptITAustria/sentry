@@ -11,11 +11,22 @@ import {
     getLatestChallengeFromGraph,
     getSentryWalletsForOperator,
     getSentryKeysFromGraph,
-    getPoolInfosFromGraph
+    getPoolInfosFromGraph,
+    getOwnerOrDelegatePools,
+    getKeysOfPool,
+    getUserInteractedPools,
+    getUserStakedKeysOfPool,
+    listNodeLicenses,
+    getLatestChallenge,
+    getBoostFactor as getBoostFactorRPC,
+    getMintTimestamp,
+    listOwnersForOperator,
+    checkKycStatus,
+    getSubmissionsForChallenges
 } from "../index.js";
 import axios from "axios";
 import { PoolInfo, RefereeConfig, SentryKey, SentryWallet, Submission } from "@sentry/sentry-subgraph-client";
-import { GraphQLClient } from 'graphql-request'
+import { getSubgraphHealthStatus } from "../subgraph/getSubgraphHealthStatus.js";
 
 export enum NodeLicenseStatus {
     WAITING_IN_QUEUE = "Booting Operator For Key", // waiting to do an action, but in a queue
@@ -41,6 +52,8 @@ export type PublicNodeBucketInformation = {
     confirmHash: string
 }
 
+const MAX_CHALLENGE_CLAIM_AMOUNT = 6480;
+
 type ProcessChallenge = {
     createdTimestamp: bigint,
     challengerSignedHash: string;
@@ -55,11 +68,15 @@ let cachedBoostFactor: { [ownerAddress: string]: bigint } = {};
 let operatorAddress: string;
 const KEYS_PER_BATCH = 100;
 
-const graphClient = new GraphQLClient(config.subgraphEndpoint);
+// Cache for rpc fallback
+// const keyToOwner: { [keyId: string]: string } = {};
+let cachedOperatorWallets: string[];
+const mintTimestamps: { [nodeLicenseId: string]: bigint } = {};
+let cachedKeysOfOwner: { [keyId: string]: SentryKey };
 
 // SUBGRAPH EDIT
 let nodeLicenseStatusMap: NodeLicenseStatusMap = new Map();
-let cachedOperatorOwners: string[] | undefined;
+let passedInOwnersAndPools: string[] | undefined;
 
 async function getPublicNodeFromBucket(confirmHash: string) {
     const url = `https://sentry-public-node.xai.games/assertions/${confirmHash.toLowerCase()}.json`;
@@ -175,9 +192,9 @@ async function processNewChallenge(
     challenge: ProcessChallenge,
     nodeLicenseIds: bigint[],
     sentryKeysMap: { [keyId: string]: SentryKey },
-    sentryWalletMap: { [address: string]: SentryWallet },
-    mappedPools: { [poolAddress: string]: PoolInfo },
-    refereeConfig: RefereeConfig
+    sentryWalletMap?: { [address: string]: SentryWallet },
+    mappedPools?: { [poolAddress: string]: PoolInfo },
+    refereeConfig?: RefereeConfig
 ) {
     cachedLogger(`Processing new challenge with number: ${challengeNumber}.`);
     cachedBoostFactor = {};
@@ -208,8 +225,13 @@ async function processNewChallenge(
             let isPool = sentryKey.assignedPool != "0x";
             const keyOwner = isPool ? sentryKey.assignedPool : sentryKey.owner;
             if (!cachedBoostFactor[keyOwner]) {
-                cachedBoostFactor[keyOwner] = calculateBoostFactor(sentryKey, sentryWalletMap[sentryKey.owner], mappedPools, refereeConfig);
-                cachedLogger(`Found chance boost of ${Number(cachedBoostFactor[keyOwner]) / 100}% for ${isPool ? "pool" : "owner"} ${keyOwner}`);
+                if (mappedPools && refereeConfig && sentryWalletMap) {
+                    cachedBoostFactor[keyOwner] = calculateBoostFactor(sentryKey, sentryWalletMap[sentryKey.owner], mappedPools, refereeConfig);
+                    cachedLogger(`Found chance boost of ${Number(cachedBoostFactor[keyOwner]) / 100}% for ${isPool ? `pool: ${mappedPools[keyOwner].metadata[0]} (${keyOwner})` : `owner: ${keyOwner}`}`);
+                } else {
+                    cachedBoostFactor[keyOwner] = await getBoostFactorRPC(keyOwner);
+                    cachedLogger(`Found chance boost of ${Number(cachedBoostFactor[keyOwner]) / 100}% for ${isPool ? `pool:` : `owner:`} ${keyOwner}`);
+                }
             }
 
             const [payoutEligible] = createAssertionHashAndCheckPayout(nodeLicenseId, challengeNumber, cachedBoostFactor[keyOwner], challenge.assertionStateRootOrConfirmData, challenge.challengerSignedHash);
@@ -226,14 +248,28 @@ async function processNewChallenge(
         }
 
         try {
-            const foundSubmission = sentryKey.submissions.find(s => s.challengeNumber.toString() == challengeNumber.toString());
-            if (foundSubmission) {
+
+            let hasSubmission;
+
+            if (mappedPools && refereeConfig && sentryWalletMap) {
+                const foundSubmission = sentryKey.submissions.find(s => s.challengeNumber.toString() == challengeNumber.toString());
+                if (foundSubmission) {
+                    hasSubmission = true;
+                }
+
+            } else {
+                const [{ submitted }] = await retry(() => getSubmissionsForChallenges([challengeNumber], nodeLicenseId));
+                if (submitted) {
+                    hasSubmission = true;
+                }
+            }
+
+            if (hasSubmission) {
                 cachedLogger(`Sentry Key ${nodeLicenseId} has submitted for challenge ${challengeNumber} by another node. If multiple nodes are running, this message can be ignored.`);
                 updateNodeLicenseStatus(nodeLicenseId, NodeLicenseStatus.WAITING_FOR_NEXT_CHALLENGE);
                 continue;
             }
 
-            cachedLogger(`Adding Sentry Key ${nodeLicenseId} to batch for bulk submission for challenge ${challengeNumber}.`);
             batchedWinnerKeys.push(nodeLicenseId);
             updateNodeLicenseStatus(nodeLicenseId, NodeLicenseStatus.WAITING_FOR_NEXT_CHALLENGE);
 
@@ -244,11 +280,10 @@ async function processNewChallenge(
 
     }
 
-    cachedLogger(`${nonWinnerKeysCount} / ${nodeLicenseIds.length} keys did not accrue esXAI for the challenge ${challengeNumber}. A Sentry Key receives esXAI every few days.`);
+    cachedLogger(`${nodeLicenseIds.length - nonWinnerKeysCount} / ${nodeLicenseIds.length} keys did accrue esXAI for the challenge ${challengeNumber}. A Sentry Key receives esXAI every few days.`);
 
     if (batchedWinnerKeys.length) {
         await submitMultipleAssertions(batchedWinnerKeys, challengeNumber, challenge.assertionStateRootOrConfirmData, KEYS_PER_BATCH, cachedSigner, cachedLogger);
-        cachedLogger(`Submitted assertion for ${batchedWinnerKeys.length} Sentry Keys `);
     }
 }
 
@@ -301,12 +336,12 @@ async function processClosedChallenges(
     challengeId: bigint,
     nodeLicenseIds: bigint[],
     sentryKeysMap: { [keyId: string]: SentryKey },
-    sentryWalletMap: { [owner: string]: SentryWallet },
-    removeSubmissionAfterProcess: boolean = false
+    sentryWalletMap?: { [owner: string]: SentryWallet }
 ) {
     const challengeToEligibleNodeLicensesMap: Map<bigint, bigint[]> = new Map();
-
     const beforeStatus: { [key: string]: string | undefined } = {}
+    const nonKYCWallets: { [wallet: string]: number } = {}
+    const ownerKYCStatus: { [keyId: string]: boolean } = {};
 
     for (const nodeLicenseId of nodeLicenseIds) {
 
@@ -315,37 +350,79 @@ async function processClosedChallenges(
         updateNodeLicenseStatus(nodeLicenseId, NodeLicenseStatus.QUERYING_FOR_UNCLAIMED_SUBMISSIONS);
         safeStatusCallback();
 
-        updateNodeLicenseStatus(nodeLicenseId, `Checking KYC Status`);
-        safeStatusCallback();
-
-        if (!sentryWalletMap[sentryKey.owner].isKYCApproved) {
-            cachedLogger(`Checked KYC status of '${sentryKey.owner}' for Sentry Key '${nodeLicenseId}'. It was not KYC'd and not able to claim the reward.`);
-            updateNodeLicenseStatus(nodeLicenseId, `Cannot Claim, Failed KYC`);
-            safeStatusCallback();
-            continue;
-        } else {
-            updateNodeLicenseStatus(nodeLicenseId, `Checking for unclaimed rewards for challenge '${challengeId}'.`);
-            safeStatusCallback();
-        }
-
         try {
+            let hasSubmission: boolean = false;
+            if (sentryWalletMap) {
+                ownerKYCStatus[sentryKey.owner] = sentryWalletMap[sentryKey.owner].isKYCApproved;
 
-            const found = findSubmissionOnSentryKey(sentryKey, challengeId);
+                const found = findSubmissionOnSentryKey(sentryKey, challengeId);
+                if (found) {
+                    hasSubmission = true;
+                }
+            } else {
+                const foundSubmission = await retry(() => getSubmissionsForChallenges([challengeId], nodeLicenseId), 3);
+                if (foundSubmission[0] && foundSubmission[0].eligibleForPayout && !foundSubmission[0].claimed) {
+                    hasSubmission = true;
+                }
+            }
 
-            if (found) {
+            if (!hasSubmission) {
+                updateNodeLicenseStatus(nodeLicenseId, beforeStatus[nodeLicenseId.toString()] || "Waiting for next challenge");
+                safeStatusCallback();
+                continue;
+            }
+
+            updateNodeLicenseStatus(nodeLicenseId, `Checking KYC Status`);
+            safeStatusCallback();
+
+            let isKYC: boolean = false;
+            if (sentryWalletMap) {
+                isKYC = sentryWalletMap[sentryKey.owner].isKYCApproved;
+            } else {
+                //If we are running on RPC we should not check every single pool key that did not come from an owner for KYC. 
+                //The Referee will let the transaction go through but won't claim
+                if (sentryKey.assignedPool != "0x") {
+                    isKYC = true;
+                } else {
+                    //Cache KYC status on owner basis for each challenge
+                    if (ownerKYCStatus[sentryKey.owner] === undefined) {
+                        const [{ isKycApproved }] = await retry(async () => await checkKycStatus([sentryKey.owner]));
+                        ownerKYCStatus[sentryKey.owner] = isKycApproved
+                    }
+                    isKYC = ownerKYCStatus[sentryKey.owner];
+                }
+            }
+
+            if (isKYC) {
                 if (!challengeToEligibleNodeLicensesMap.has(challengeId)) {
                     challengeToEligibleNodeLicensesMap.set(challengeId, []);
                 }
                 challengeToEligibleNodeLicensesMap.get(challengeId)?.push(BigInt(nodeLicenseId));
 
-                if (removeSubmissionAfterProcess) {
-                    sentryKey.submissions.splice(found.index, 1);
+                updateNodeLicenseStatus(nodeLicenseId, `Claiming esXAI...`);
+                safeStatusCallback();
+            } else {
+
+                if (!nonKYCWallets[sentryKey.owner]) {
+                    nonKYCWallets[sentryKey.owner] = 0;
                 }
+                nonKYCWallets[sentryKey.owner]++;
+
+                updateNodeLicenseStatus(nodeLicenseId, `Cannot Claim, Failed KYC`);
+                safeStatusCallback();
             }
 
         } catch (error: any) {
             cachedLogger(`Error processing submissions for Sentry Key ${nodeLicenseId} - ${error && error.message ? error.message : error}`);
         }
+    }
+
+    const nonKYC = Object.keys(nonKYCWallets);
+    if (nonKYC.length) {
+        cachedLogger(`Failed KYC check for ${nonKYC.length} owners: `);
+        nonKYC.forEach(w => {
+            cachedLogger(`${w} (${nonKYCWallets[w]} keys)`);
+        })
     }
 
     // Iterate over the map and call processClaimForChallenge for each challenge with its unique list of eligible nodeLicenseIds
@@ -382,27 +459,164 @@ async function listenForChallengesCallback(challengeNumber: bigint, challenge: C
     }
 
     cachedLogger(`Received new challenge with number: ${challengeNumber}.`);
+    cachedLogger(`Processing challenge...`);
 
-    const { sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig } =
-        await loadOperatingKeys(operatorAddress, cachedOperatorOwners, challengeNumber - 1n);
+    // Add a delay of 1 -300 seconds to the new challenge process so not all operators request the subgraph at the same time
+    const delay = Math.floor(Math.random() * 301);
+    await new Promise((resolve) => {
+        setTimeout(resolve, delay * 1000);
+    })
 
-    await processNewChallenge(challengeNumber, challenge, nodeLicenseIds, sentryKeysMap, sentryWalletMap, mappedPools, refereeConfig);
+    try {
+        const graphStatus = await getSubgraphHealthStatus();
+        if (graphStatus.healthy) {
+            const { sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig } =
+                await loadOperatorKeysFromGraph(operatorAddress, challengeNumber - 1n);
 
-    // check the previous challenge, that should be closed now
-    if (challengeNumber > BigInt(1)) {
-        await processClosedChallenges(challengeNumber - BigInt(1), nodeLicenseIds, sentryKeysMap, sentryWalletMap);
+            await processNewChallenge(challengeNumber, challenge, nodeLicenseIds, sentryKeysMap, sentryWalletMap, mappedPools, refereeConfig);
+            // check the previous challenge, that should be closed now
+            if (challengeNumber > BigInt(1)) {
+                await processClosedChallenges(challengeNumber - BigInt(1), nodeLicenseIds, sentryKeysMap, sentryWalletMap);
+            }
+
+
+        } else {
+            cachedLogger(`Revert to RPC call instead of using subgraph. Subgraph status error: ${graphStatus.error}`)
+
+            const { sentryKeysMap, nodeLicenseIds } = await loadOperatorKeysFromRPC(operatorAddress);
+
+            await processNewChallenge(challengeNumber, challenge, nodeLicenseIds, sentryKeysMap);
+            // check the previous challenge, that should be closed now
+            if (challengeNumber > BigInt(1)) {
+                await processClosedChallenges(challengeNumber - BigInt(1), nodeLicenseIds, sentryKeysMap);
+            }
+        }
+    } catch (error: any) {
+        cachedLogger(`Error processing new challenge in listener callback: - ${error && error.message ? error.message : error}`);
     }
+
+
 }
 
-const loadOperatingKeys = async (operator: string, operatorOwners?: string[], latestChallengeNumber?: bigint) => {
 
-    cachedLogger(`Getting all wallets assigned to the operator.`);
+//Set the assignedPool field to our owner keys should they be staked
+async function syncOwnerStakedKeysForRPC(owners: string[], sentryKeysMap: { [keyId: string]: SentryKey }): Promise<{ [keyId: string]: SentryKey }> {
+
+    for (const owner of owners) {
+        const ownerInteractedPools = await getUserInteractedPools(owner);
+
+        if (ownerInteractedPools.length) {
+
+            for (const pool of ownerInteractedPools) {
+
+                const keys = await getUserStakedKeysOfPool(pool, owner);
+                for (const key of keys) {
+
+                    //The key needs to be in the list already
+                    //We just need to check if we already mapped the pool because it was staked in one of the operators owned / delegated pools
+
+                    if (!sentryKeysMap[key.toString()]) {
+                        cachedLogger(`Error key not found in list of keys to operate, restart the operator to reload for \nowner: ${owner}, \npool: ${pool}, \nkey: ${key.toString()}.`);
+                        continue;
+                    }
+
+                    sentryKeysMap[key.toString()].assignedPool = pool;
+                }
+            }
+        }
+    }
+
+    return sentryKeysMap;
+}
+
+//Load all the keys from pool our operator should operate
+//Exclude pool that are not in the whitelist
+const reloadPoolKeysForRPC = async (
+    operator: string,
+    sentryKeysMap: { [keyId: string]: SentryKey },
+    operatorOwners?: string[]
+): Promise<{ [keyId: string]: SentryKey }> => {
+
+    let operatorPoolAddresses = await getOwnerOrDelegatePools(operator);
+
     if (operatorOwners && operatorOwners.length) {
+        operatorPoolAddresses = operatorPoolAddresses.filter(o => operatorOwners.includes(o.toLowerCase()))
+    }
+
+    if (operatorPoolAddresses.length) {
+
+        cachedLogger(`Found ${operatorPoolAddresses.length} pools for operator.`);
+
+        for (const pool of operatorPoolAddresses) {
+            //Check every key and find out if its already in the nodeLicenseIds list
+            cachedLogger(`Fetching node licenses for pool ${pool}.`);
+
+            const keys = await getKeysOfPool(pool);
+
+            for (const key of keys) {
+
+
+                if (sentryKeysMap[key.toString()]) {
+
+                    sentryKeysMap[key.toString()].assignedPool = pool;
+
+                } else {
+
+                    if (!mintTimestamps[key.toString()]) {
+                        mintTimestamps[key.toString()] = await retry(async () => await getMintTimestamp(key))
+                    }
+
+                    sentryKeysMap[key.toString()] = {
+                        assignedPool: pool,
+                        keyId: key,
+                        mintTimeStamp: mintTimestamps[key.toString()],
+                        id: key.toString(),
+                        owner: "",
+                        sentryWallet: {} as any,
+                        submissions: []
+                    }
+                }
+
+            }
+        }
+    }
+
+    return sentryKeysMap;
+}
+
+
+/**
+ * Load all the operating keys and metadata from the subgraph.
+ * This should run on every challenge and will find all keys and pool for this operator, including key timestamps, assigned pools and owner kyc status
+ * It will also attach submission objects to each sentryKey for processing the last closed challenge
+ *  
+ * @param operator - The public key of the operator wallet
+ * @param latestChallengeNumber - The latest challenge number we should attach submissions to the sentry keys for
+ * @param submissionsFilter - The filter for the submissions if submissions should be included
+ * @returns mapped sentry key objects, pool objects, owner information and Referee config (this will be used to locally calculate the boost Factor)
+ */
+const loadOperatorKeysFromGraph = async (
+    operator: string,
+    latestChallengeNumber?: bigint
+): Promise<{
+    wallets: SentryWallet[],
+    sentryKeys: SentryKey[],
+    sentryWalletMap: { [owner: string]: SentryWallet },
+    sentryKeysMap: { [keyId: string]: SentryKey },
+    nodeLicenseIds: bigint[],
+    mappedPools: { [poolAddress: string]: PoolInfo },
+    refereeConfig: RefereeConfig
+}> => {
+    cachedLogger(`Loading all wallets assigned to the operator.`);
+    if (passedInOwnersAndPools && passedInOwnersAndPools.length) {
         cachedLogger(`Operator owners were passed in.`);
     } else {
         cachedLogger(`No operator owners were passed in.`);
     }
-    const { wallets, pools, refereeConfig } = await retry(() => getSentryWalletsForOperator(graphClient, operator, operatorOwners));
+
+    // Load all operator addresses and pool addresses, pass in the whitelist to get them filtered
+    // refereeConfig will be used to locally calculate the boos factor (hold tier thresholds and boostFactors as well as max staking capacity per key)
+    const { wallets, pools, refereeConfig } = await retry(() => getSentryWalletsForOperator(operator, passedInOwnersAndPools));
 
     const mappedPools: { [poolAddress: string]: PoolInfo } = {};
 
@@ -412,8 +626,8 @@ const loadOperatingKeys = async (operator: string, operatorOwners?: string[], la
         cachedLogger(`Found ${pools.length} pools. The addresses are: ${Object.keys(mappedPools).join(', ')}`);
     }
 
+    // Load SentryKey objects from the subgraph
     const sentryKeys = await retry(() => getSentryKeysFromGraph(
-        graphClient,
         wallets.map(w => w.address),
         pools.map(p => p.address),
         true,
@@ -424,15 +638,22 @@ const loadOperatingKeys = async (operator: string, operatorOwners?: string[], la
     const sentryKeysMap: { [keyId: string]: SentryKey } = {}
     const nodeLicenseIds: bigint[] = [];
 
+    //Map the sentryWallet object and cache the owners so we can use them should the subgraph go down during runtime
+    cachedOperatorWallets = [];
     wallets.forEach(w => {
         sentryWalletMap[w.address] = w;
+        cachedOperatorWallets.push(w.address.toLowerCase());
     })
 
     let keyOfOwnerCount = 0;
     let keyOfPoolsCount = 0;
 
     const keyPools: Set<string> = new Set();
+    cachedKeysOfOwner = {}
 
+    //Map the sentryKeys for use in operator
+    //Create the updated nodeLicenseIds array
+    //Cache the owner keys so we can use them should the subgraph go down during runtime
     sentryKeys.forEach(s => {
         if (!sentryWalletMap[s.owner]) {
             sentryWalletMap[s.owner] = s.sentryWallet
@@ -445,28 +666,160 @@ const loadOperatingKeys = async (operator: string, operatorOwners?: string[], la
             keyOfOwnerCount++;
         } else {
             keyPools.add(s.assignedPool);
-            keyOfPoolsCount++;
+            if (cachedOperatorWallets.includes(s.owner.toLowerCase())) {
+                keyOfOwnerCount++;
+            } else {
+                keyOfPoolsCount++;
+            }
         }
         nodeLicenseStatusMap.set(BigInt(s.keyId), {
             ownerPublicKey: s.owner,
             status: NodeLicenseStatus.WAITING_IN_QUEUE,
         });
+
+        mintTimestamps[s.keyId.toString()] = s.mintTimeStamp;
+        if (cachedOperatorWallets.includes(s.owner.toLowerCase())) {
+            cachedKeysOfOwner[s.keyId.toString()] = s;
+        }
     });
 
+    //Cleanup removed keys from nodeLicenseStatusMap
+    for (const [key] of nodeLicenseStatusMap.entries()) {
+        if (!sentryKeysMap[key.toString()]) {
+            nodeLicenseStatusMap.delete(key);
+        }
+    }
+
+    // If we have keys from pools we would not operate from the owners map the pool metadata for 
     if (keyPools.size) {
-        const keyPoolInfos = await getPoolInfosFromGraph(graphClient, [...keyPools]);
-        keyPoolInfos.forEach(p => {
+        const keyPoolsData = await retry(() => getPoolInfosFromGraph([...keyPools]));
+        keyPoolsData.pools.forEach(p => {
             mappedPools[p.address] = p;
         })
     }
 
     safeStatusCallback();
+
     cachedLogger(`Total Sentry Keys fetched: ${nodeLicenseIds.length}.`);
-    cachedLogger(`Fetched ${keyOfOwnerCount} keys of owners and ${keyOfPoolsCount} keys staked in pools.`);
+    cachedLogger(`Fetched ${keyOfOwnerCount} keys of owners.`);
+    cachedLogger(`Fetched ${keyOfPoolsCount} keys of pools.`);
 
     return { wallets, sentryKeys, sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig };
 }
 
+/**
+ * Load all the operating keys and metadata from the RPC.
+ * This should run on every challenge and will find all keys and pool for this operator.
+ * It will used cached operators and cached keys from owners but will refresh all pool keys and assigned pools from owner keys
+ *  
+ * @param operator - The public key of the operator wallet
+ * @returns mapped sentry key objects
+ */
+const loadOperatorKeysFromRPC = async (
+    operator: string
+): Promise<{
+    sentryKeysMap: { [keyId: string]: SentryKey },
+    nodeLicenseIds: bigint[],
+}> => {
+
+    let owners;
+
+    //If we don't have the owners we fetch them from the RPC
+    if (!cachedOperatorWallets) {
+        cachedLogger(`Loading all wallets assigned to the operator.`);
+        //We need to get all approved owners so we can filter against pools
+        const ownersForOperator = (await retry(async () => await listOwnersForOperator(operator))).map(o => o.toLowerCase());
+        cachedLogger(`Found associated owners: ${ownersForOperator.join(', ')}`);
+        cachedOperatorWallets = [operator.toLowerCase(), ...ownersForOperator];
+        // get a list of all the owners that are added to this operator
+        if (passedInOwnersAndPools && passedInOwnersAndPools.length) {
+            cachedLogger(`Operator owners were passed in. ${passedInOwnersAndPools.join(', ')}`);
+            cachedOperatorWallets = cachedOperatorWallets.filter(o => passedInOwnersAndPools?.includes(o));
+        } else {
+            cachedLogger(`No operator owners were passed in.`);
+        }
+    }
+
+    owners = [...cachedOperatorWallets]
+    cachedLogger(`Found ${owners.length} operatorWallets. The addresses are: ${owners.join(', ')}`);
+
+
+    const nodeLicenseIds: bigint[] = [];
+    let sentryKeysMap: { [keyId: string]: SentryKey } = {}
+
+    //If we don't have cached keys from owner we fetch them and the metadata from the RPC
+    if (!cachedKeysOfOwner) {
+        cachedKeysOfOwner = {};
+
+        for (const owner of owners) {
+            cachedLogger(`Fetching node licenses for owner ${owner}.`);
+            const licensesOfOwner = await listNodeLicenses(owner, (keyId) => {
+                cachedLogger(`Fetched node licenses key ${keyId.toString()}.`);
+            });
+
+            for (const licenseId of licensesOfOwner) {
+
+                if (!mintTimestamps[licenseId.toString()]) {
+                    mintTimestamps[licenseId.toString()] = await retry(async () => await getMintTimestamp(licenseId))
+                }
+
+                const sentryKey: SentryKey = {
+                    assignedPool: "0x",
+                    keyId: licenseId,
+                    mintTimeStamp: mintTimestamps[licenseId.toString()],
+                    id: licenseId.toString(),
+                    owner: owner,
+                    sentryWallet: {} as any,
+                    submissions: []
+                }
+                cachedKeysOfOwner[licenseId.toString()] = sentryKey;
+                sentryKeysMap[licenseId.toString()] = sentryKey;
+            }
+
+            if (licensesOfOwner.length) {
+                cachedLogger(`Fetched ${licensesOfOwner.length} node licenses for owner ${owner}.`);
+            }
+        }
+    } else {
+        sentryKeysMap = { ...cachedKeysOfOwner }
+    }
+
+    const keysOfOwnersCount = Object.keys(sentryKeysMap).length;
+    // Map the keys from pools our operator should operate, filter pools if passedInOwnersAndPools whitelist is enabled
+    sentryKeysMap = await reloadPoolKeysForRPC(operator, sentryKeysMap, passedInOwnersAndPools);
+
+    // Map all the assigned pools from keys of owners
+    sentryKeysMap = await syncOwnerStakedKeysForRPC(owners, sentryKeysMap);
+
+    // Sync the nodeLicenseStatusMap
+    Object.keys(sentryKeysMap).forEach(key => {
+        nodeLicenseIds.push(BigInt(key))
+        nodeLicenseStatusMap.set(BigInt(key), {
+            ownerPublicKey: sentryKeysMap[key].owner,
+            status: NodeLicenseStatus.WAITING_IN_QUEUE,
+        });
+    });
+
+    //Cleanup removed keys from nodeLicenseStatusMap
+    for (const [key] of nodeLicenseStatusMap.entries()) {
+        if (!sentryKeysMap[key.toString()]) {
+            nodeLicenseStatusMap.delete(key);
+        }
+    }
+
+    safeStatusCallback();
+
+    cachedLogger(`Total Sentry Keys fetched: ${nodeLicenseIds.length}.`);
+    cachedLogger(`Fetched ${keysOfOwnersCount} keys of owners.`);
+    cachedLogger(`Fetched ${Object.keys(sentryKeysMap).length - keysOfOwnersCount} keys of pools.`);
+
+    return { sentryKeysMap, nodeLicenseIds }
+}
+
+// Process past challenges from subgraph submissions
+// This will first sort all keys and their submissions by challenge and then process each challenge
+// This could block the thread since its not loading any additional information from any external resource so a await for a timeout is required
+// In future updates it should be considered to run this in its own thread but the desktop client and cli will both have to support the implementation
 const processPastChallenges = async (
     nodeLicenseIds: bigint[],
     sentryKeysMap: { [keyId: string]: SentryKey },
@@ -477,24 +830,38 @@ const processPastChallenges = async (
 
     cachedLogger(`Processing closed challenges ${openChallengeNumber} - ${latestClaimableChallenge} for ${nodeLicenseIds.length} keys.`);
 
-    let filteredLicenseIds = nodeLicenseIds.filter(n => {
-        return sentryKeysMap[n.toString()].submissions.length > 0
-    });;
+    const challengeToKeys: { [challenge: string]: bigint[] } = {}
 
-    for (let i = openChallengeNumber - 1; i >= latestClaimableChallenge; i--) {
-        if (filteredLicenseIds.length == 0) {
-            break;
+    // For each key map all submissions to the challengeNumber
+    for (let i = 0; i < nodeLicenseIds.length; i++) {
+        const keyId = nodeLicenseIds[i].toString();
+
+        if (sentryKeysMap[keyId].submissions.length) {
+            //Map each submission of the key to the challengeNumber
+            sentryKeysMap[keyId].submissions.forEach(s => {
+                if (!challengeToKeys[s.challengeNumber.toString()]) {
+                    challengeToKeys[s.challengeNumber.toString()] = []
+                }
+                challengeToKeys[s.challengeNumber.toString()].push(nodeLicenseIds[i])
+            })
         }
 
-        cachedLogger(`Processing closed challenge ${i} for ${filteredLicenseIds.length} keys ...`);
-        await processClosedChallenges(BigInt(i), filteredLicenseIds, sentryKeysMap, sentryWalletMap, true);
+        await new Promise((resolve) => {
+            setTimeout(resolve, 100);
+        });
+    }
+
+    // Sort all challenges that have unclaimed submissions by challengeNumber
+    const openChallenges = Object.keys(challengeToKeys);
+    cachedLogger(`Found ${openChallenges.length} challenges to process...`);
+    openChallenges.sort(function (a, b) { return Number(b) - Number(a) });
+
+    // Process each mapped challenge with only the keys that have submissions
+    for (let i = 0; i < openChallenges.length; i++) {
+        cachedLogger(`Processing closed challenge ${openChallenges[i]} for ${challengeToKeys[openChallenges[i]].length} keys ...`);
+        await processClosedChallenges(BigInt(openChallenges[i]), challengeToKeys[openChallenges[i]], sentryKeysMap, sentryWalletMap);
 
         await new Promise((resolve) => {
-            filteredLicenseIds = filteredLicenseIds.filter(n => {
-                return sentryKeysMap[n.toString()].submissions.length > 0
-            });
-            //Add sleep so we don't block the challenge listener.
-            //This should be refactored using web workers
             setTimeout(resolve, 100);
         });
     }
@@ -520,7 +887,7 @@ export async function operatorRuntime(
     cachedLogger = logFunction;
     cachedSigner = signer;
     onAssertionMissMatchCb = onAssertionMissMatch;
-    cachedOperatorOwners = operatorOwners;
+    passedInOwnersAndPools = operatorOwners ? operatorOwners.map(o => o.toLowerCase()) : operatorOwners;
 
     logFunction(`Booting operator runtime version [${version}].`);
 
@@ -539,37 +906,55 @@ export async function operatorRuntime(
     operatorAddress = await signer.getAddress();
     logFunction(`Fetched address of operator ${operatorAddress}.`);
 
-    const closeChallengeListener = listenForChallenges(listenForChallengesCallback);
+    let closeChallengeListener: () => void;
     logFunction(`Started listener for new challenges.`);
 
-    // Process open challenge
-    const openChallenge = await retry(() => getLatestChallengeFromGraph(graphClient));
+    const graphStatus = await getSubgraphHealthStatus();
+    if (graphStatus.healthy) {
+        closeChallengeListener = listenForChallenges(listenForChallengesCallback)
 
-    const latestClaimableChallenge = Number(openChallenge.challengeNumber) <= 4320 ? 1 : Number(openChallenge.challengeNumber) - 4320;
-    const { sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig } = await loadOperatingKeys(operatorAddress, operatorOwners, BigInt(latestClaimableChallenge));
+        const openChallenge = await retry(() => getLatestChallengeFromGraph());
+        // Calculate the latest challenge we should load from the graph
+        const latestClaimableChallenge = Number(openChallenge.challengeNumber) <= MAX_CHALLENGE_CLAIM_AMOUNT ? 1 : Number(openChallenge.challengeNumber) - MAX_CHALLENGE_CLAIM_AMOUNT;
 
-    logFunction(`Processing open challenges.`);
+        // Load all sentryKey objects including all winning and unclaimed submissions up until latestClaimableChallenge
+        const { sentryWalletMap, sentryKeysMap, nodeLicenseIds, mappedPools, refereeConfig } =
+            await retry(() => loadOperatorKeysFromGraph(operatorAddress, BigInt(latestClaimableChallenge)));
 
-    await processNewChallenge(BigInt(openChallenge.challengeNumber), openChallenge, nodeLicenseIds, sentryKeysMap, sentryWalletMap, mappedPools, refereeConfig);
+        await processNewChallenge(BigInt(openChallenge.challengeNumber), openChallenge, nodeLicenseIds, sentryKeysMap, sentryWalletMap, mappedPools, refereeConfig);
+        logFunction(`Processing open challenges.`);
 
-    //Remove submissions for current challenge so we don't process it again
-    nodeLicenseIds.forEach(n => {
-        const found = findSubmissionOnSentryKey(sentryKeysMap[n.toString()], BigInt(openChallenge.challengeNumber));
-        if (found) {
-            sentryKeysMap[n.toString()].submissions.splice(found.index, 1);
-        }
-    });
+        //Remove submissions for current challenge so we don't process it again
+        nodeLicenseIds.forEach(n => {
+            const found = findSubmissionOnSentryKey(sentryKeysMap[n.toString()], BigInt(openChallenge.challengeNumber));
+            if (found) {
+                sentryKeysMap[n.toString()].submissions.splice(found.index, 1);
+            }
+        });
 
-    //Process all past challenges check for unclaimed
-    processPastChallenges(
-        nodeLicenseIds,
-        sentryKeysMap,
-        sentryWalletMap,
-        openChallenge.challengeNumber,
-        latestClaimableChallenge
-    ).then(() => {
+        //Process all past challenges check for unclaimed
+        processPastChallenges(
+            nodeLicenseIds,
+            sentryKeysMap,
+            sentryWalletMap,
+            openChallenge.challengeNumber,
+            latestClaimableChallenge
+        ).then(() => {
+            logFunction(`The operator has finished booting. The operator is running successfully. esXAI will accrue every few days.`);
+        })
+
+    } else {
+        cachedLogger(`Revert to RPC call instead of using subgraph. Subgraph status error: ${graphStatus.error}`)
+
+        const { sentryKeysMap, nodeLicenseIds } = await loadOperatorKeysFromRPC(operatorAddress);
+
+        const [latestChallengeNumber, latestChallenge] = await getLatestChallenge();
+        await processNewChallenge(latestChallengeNumber, latestChallenge, nodeLicenseIds, sentryKeysMap);
+
+        closeChallengeListener = listenForChallenges(listenForChallengesCallback)
+
         logFunction(`The operator has finished booting. The operator is running successfully. esXAI will accrue every few days.`);
-    })
+    }
 
     const fetchBlockNumber = async () => {
         try {
