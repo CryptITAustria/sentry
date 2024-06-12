@@ -373,6 +373,14 @@ export class PoolInfo extends Entity {
   set createdTimestamp(value: BigInt) {
     this.set("createdTimestamp", Value.fromBigInt(value));
   }
+
+  get poolChallenges(): PoolChallengesLoader {
+    return new PoolChallengesLoader(
+      "PoolInfo",
+      this.get("id")!.toString(),
+      "poolChallenges",
+    );
+  }
 }
 
 export class UnstakeRequest extends Entity {
@@ -1577,6 +1585,24 @@ export class SubmissionLoader extends Entity {
   load(): Submission[] {
     let value = store.loadRelated(this._entity, this._id, this._field);
     return changetype<Submission[]>(value);
+  }
+}
+
+export class PoolChallengesLoader extends Entity {
+  _entity: string;
+  _field: string;
+  _id: string;
+
+  constructor(entity: string, id: string, field: string) {
+    super();
+    this._entity = entity;
+    this._id = id;
+    this._field = field;
+  }
+
+  load(): PoolChallenges[] {
+    let value = store.loadRelated(this._entity, this._id, this._field);
+    return changetype<PoolChallenges[]>(value);
   }
 }
 
