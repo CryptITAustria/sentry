@@ -76,7 +76,7 @@ export function handleInitialized(event: Initialized): void {
 
 export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
 
-  if (event.block.number.lt(BigInt.fromI32(32124545))) {
+  if (event.block.number.lt(BigInt.fromI32(51127279))) {
     return;
   }
 
@@ -225,6 +225,11 @@ export function handleChallengeExpired(event: ChallengeExpiredEvent): void {
 }
 
 export function handleChallengeSubmitted(event: ChallengeSubmittedEvent): void {
+  
+  if (event.block.number.lt(BigInt.fromI32(51117279))) {
+    return;
+  }
+
   // create an entity for the challenge
   let challenge = new Challenge(event.params.challengeNumber.toString())
 
@@ -248,7 +253,7 @@ export function handleRewardsClaimed(event: RewardsClaimedEvent): void {
   const challenge = Challenge.load(event.params.challengeId.toString())
 
   if (!challenge) {
-    log.warning("Failed to find challenge handleRewardsClaimed challengeId: " + event.params.challengeId.toString() + ", TX: " + event.transaction.hash.toHexString(),[])
+    // log.warning("Failed to find challenge handleRewardsClaimed challengeId: " + event.params.challengeId.toString() + ", TX: " + event.transaction.hash.toHexString(),[])
     return;
   }
 
@@ -352,7 +357,7 @@ export function handleBatchRewardsClaimed(event: BatchRewardsClaimedEvent): void
   // query for the challenge and update it
   const challenge = Challenge.load(event.params.challengeId.toString())
   if (!challenge) {
-    log.warning("Failed to find challenge handleBatchRewardsClaimed challengeId: " + event.params.challengeId.toString() + ", TX: " + event.transaction.hash.toHexString(), [])
+    // log.warning("Failed to find challenge handleBatchRewardsClaimed challengeId: " + event.params.challengeId.toString() + ", TX: " + event.transaction.hash.toHexString(), [])
     return;
   }
 
