@@ -8,6 +8,7 @@ import { retry } from '../utils/retry.js';
 import { listenForChallenges } from '../operator/listenForChallenges.js';
 import { Challenge } from '../challenger/getChallenge.js';
 import { IPool, PoolSchema } from './types.js';
+import { getRewardRatesFromGraph } from '../subgraph/getRewardRatesFromGraph.js';
 
 /**
  * Arguments required to initialize the data centralization runtime.
@@ -105,24 +106,22 @@ export async function dataCentralizationRuntime({
 			};
 		});
 
-		// TODO get data from subgraph
-		// TODO RENAME AND ADD CORRECT IMPORT
-		const updatedPools = await QUERY_SUBGRAPH();
+		const updatedPools = await getRewardRatesFromGraph([]);
 
 		for (const updatedPool of updatedPools) {
 
 			if (!mappedPools[updatedPool.poolAddress] ||
 				mappedPools[updatedPool.poolAddress].esXaiRewardRate == undefined || 
-				mappedPools[updatedPool.poolAddress].esXaiRewardRate != updatedPool.esXaiRewardRate || 
+				mappedPools[updatedPool.poolAddress].esXaiRewardRate != updatedPool.averageDailyRewardPerEsXai || 
 				mappedPools[updatedPool.poolAddress].keyRewardRate == undefined || 
-				mappedPools[updatedPool.poolAddress].keyRewardRate != updatedPool.keyRewardRate) {
+				mappedPools[updatedPool.poolAddress].keyRewardRate != updatedPool.averageDailyRewardPerKey) {
 
-				await PoolModel.findOneAndUpdate(
+				await PoolModel.updateOne(
 					{ poolAddress: updatedPool.poolAddress },
 					{
 						$set: {
-							esXaiRewardRate: updatedPool.esXaiRewardRate,
-							keyRewardRate: updatedPool.keyRewardRate
+							esXaiRewardRate: updatedPool.averageDailyRewardPerEsXai,
+							keyRewardRate: updatedPool.averageDailyRewardPerKey
 						}
 					},
 				);

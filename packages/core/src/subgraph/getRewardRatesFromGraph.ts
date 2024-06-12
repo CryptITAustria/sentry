@@ -1,17 +1,6 @@
 import { GraphQLClient, gql } from "graphql-request";
 import { config } from "../config.js";
-
-// TODO: update data types
-type PoolInfoToPoolChallenge = {
-  address: string;
-  stakedBucketShare: number;
-  keyBucketShare: number;
-  poolChallenges: {
-    totalClaimedEsXaiAmount: number;
-    totalStakedEsXaiAmount: number;
-    totalStakedKeyAmount: number;
-  }[];
-}
+import { PoolInfo } from "@sentry/sentry-subgraph-client";
 
 type PoolRewardRates = {
   poolAddress: string;
@@ -30,9 +19,6 @@ export async function getRewardRatesFromGraph(
   poolAddresses: string[]
 ): Promise<PoolRewardRates[]> {
 
-  // TODO: remove
-  throw new Error('not implemented');
-
   const client = new GraphQLClient(config.subgraphEndpoint);
 
   let queryWhere = "";
@@ -43,26 +29,29 @@ export async function getRewardRatesFromGraph(
   const unixAverageWindowPlus5Mins = AVERAGE_WINDOW_DAYS * 24 * 60 * 60 * 1000 + 5 * 60 * 1000;
   const startTimestamp = Math.floor((Date.now() - unixAverageWindowPlus5Mins)/1000);
 
-  // TODO: double check query
   const query = gql`
-    poolInfos(first: 50000, orderBy: totalStakedEsXaiAmount, orderDirection: desc${queryWhere}) {
-      poolChallenges(where: {challenge_: {assertionTimestamp_gt: ${startTimestamp}}}) {
-        totalClaimedEsXaiAmount
-        totalStakedEsXaiAmount
-        totalStakedKeyAmount
+    query PoolInfos {
+      poolInfos(first: 10000, orderBy: totalStakedEsXaiAmount, orderDirection: desc${queryWhere}) {
+        poolChallenges(where: {challenge_: {assertionTimestamp_gt: ${startTimestamp}}}) {
+          totalClaimedEsXaiAmount
+          totalStakedEsXaiAmount
+          totalStakedKeyAmount
+        }
+        address
+        keyBucketShare
+        stakedBucketShare
       }
-      address
-      keyBucketShare
-      stakedBucketShare
     }
   `
 
-  const poolInfos = await client.request(query) as PoolInfoToPoolChallenge[];
+  const result = await client.request(query) as any;
 
-  const poolRewardRates: PoolRewardRates[] = poolInfos.map(poolInfo => {
+  const poolInfos: PoolInfo[] = result.poolInfos;
+
+  const poolRewardRates: PoolRewardRates[] = poolInfos.map((poolInfo: PoolInfo) => {
 
     // shares are saved as BigInt with percent values with 4 trailing "0": 50 % would equal "500000"
-    const stakedBucketShare = poolInfo.stakedBucketShare / 10**-6;
+    const stakedBucketShare = poolInfo.stakedBucketShare;
 
     // Take esXAI share of total claimed rewards and divide through total staked esXAI amount to get total claimed rewards per staked esXAI
     // Then divide through average window to get daily average
@@ -70,9 +59,8 @@ export async function getRewardRatesFromGraph(
       .reduce((sum, { totalClaimedEsXaiAmount, totalStakedEsXaiAmount }) =>
         sum + (totalClaimedEsXaiAmount * stakedBucketShare / totalStakedEsXaiAmount), 0) / AVERAGE_WINDOW_DAYS;
 
-
     // shares are saved as BigInt with percent values with 4 trailing "0": 50 % would equal "500000"
-    const keyBucketShare = poolInfo.keyBucketShare / 10**-6;
+    const keyBucketShare = poolInfo.keyBucketShare;
 
     // Take key share of total claimed rewards and divide through total staked keys to get total claimed rewards per staked key
     // Then divide through average window to get daily average
