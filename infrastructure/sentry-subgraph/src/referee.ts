@@ -19,7 +19,7 @@ import {
   SentryKey,
   RefereeConfig,
   PoolInfo,
-  PoolChallenges
+  PoolChallenge
 } from "../generated/schema"
 import { checkIfSubmissionEligible } from "./utils/checkIfSubmissionEligible"
 import { getBoostFactor } from "./utils/getBoostFactor"
@@ -178,9 +178,9 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   submission.save()
 
   if (isKeyAssignedToPool) {
-    let poolChallenges = PoolChallenges.load(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
+    let poolChallenges = PoolChallenge.load(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
     if (poolChallenges == null) {
-      poolChallenges = new PoolChallenges(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
+      poolChallenges = new PoolChallenge(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
       poolChallenges.pool = pool!.id; //We need to expect the pool entity to exist when a key is assigned, else the subgraph should fail
       poolChallenges.challenge = challenge.id
       poolChallenges.submittedKeyCount = BigInt.fromI32(0)
