@@ -45,7 +45,7 @@ type PoolChallenge @entity(immutable: false) {
   id: String!
   pool: PoolInfo!
   challenge: Challenge!
-  submittedKeyCount: BigInt! # only winning keys
+  submittedKeyCount: BigInt!
   claimKeyCount: BigInt!
   totalStakedEsXaiAmount: BigInt!
   totalStakedKeyAmount: BigInt!
