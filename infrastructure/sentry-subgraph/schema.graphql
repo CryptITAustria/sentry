@@ -53,7 +53,7 @@ type PoolInfo @entity(immutable: false) {
   ownerRequestedUnstakeKeyAmount: BigInt!
   ownerLatestUnstakeRequestCompletionTime: BigInt!
   createdTimestamp: BigInt!
-  poolChallenges: [PoolChallenges!]! @derivedFrom(field: "pool")
+  poolChallenges: [PoolChallenge!]! @derivedFrom(field: "pool")
 }
 
 type UnstakeRequest @entity(immutable: false) {
@@ -78,7 +78,7 @@ type PoolFactoryConfig @entity(immutable: false) {
   updateRewardBreakdownDelayPeriod: BigInt!
 }
 
-type PoolChallenges @entity(immutable: false) {
+type PoolChallenge @entity(immutable: false) {
   id: String!
   pool: PoolInfo!
   challenge: Challenge!
