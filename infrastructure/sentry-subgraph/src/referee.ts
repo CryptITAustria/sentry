@@ -241,7 +241,7 @@ export function handleChallengeSubmitted(event: ChallengeSubmittedEvent): void {
 export function handleRewardsClaimed(event: RewardsClaimedEvent): void {
   //TODO Remove For Production
   //if (event.block.number.lt(BigInt.fromI32(218141051))) {
-   // return;
+  // return;
   //}
   // query for the challenge and update it
   const challenge = Challenge.load(event.params.challengeId.toString())
@@ -417,7 +417,7 @@ export function handleBatchRewardsClaimed(event: BatchRewardsClaimedEvent): void
         submission.claimedFrom = "claimMultipleRewards"
         submission.save()
 
-        updatePoolChallengeOnClaim(event.params.challengeId, sentryKey, event.params.totalReward.div(event.params.keysLength), event.transaction.hash)
+        updatePoolChallengeOnClaim(event.params.challengeId, sentryKey, reward, event.transaction.hash)
       }
     }
   }

@@ -87,7 +87,6 @@ type PoolChallenges @entity(immutable: false) {
   totalStakedKeyAmount: BigInt!
   totalClaimedEsXaiAmount: BigInt!
   eligibleSubmissionsCount: BigInt!
-  #TODO Ask Chris about timestamp to be used
 }
 
 ##############################################################
