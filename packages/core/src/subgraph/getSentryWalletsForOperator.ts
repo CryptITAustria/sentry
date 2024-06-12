@@ -1,5 +1,6 @@
 import { PoolInfo, SentryWallet, RefereeConfig } from "@sentry/sentry-subgraph-client";
 import { GraphQLClient, gql } from 'graphql-request'
+import { config } from "../config.js";
 
 /**
  * 
@@ -7,13 +8,15 @@ import { GraphQLClient, gql } from 'graphql-request'
  * @returns The SentryWallet entity from the graph
  */
 export async function getSentryWalletsForOperator(
-  client: GraphQLClient,
   operator: string,
   whitelist?: string[]
 ): Promise<{ wallets: SentryWallet[], pools: PoolInfo[], refereeConfig: RefereeConfig }> {
+
+  const client = new GraphQLClient(config.subgraphEndpoint);
+
   const query = gql`
     query OperatorAddresses {
-      sentryWallets(where: {
+      sentryWallets(first: 1000, where: {
         or: [
           {address: "${operator.toLowerCase()}"}, 
           {approvedOperators_contains: ["${operator.toLowerCase()}"]}
@@ -25,12 +28,13 @@ export async function getSentryWalletsForOperator(
         stakedKeyCount
         keyCount
       }
-      poolInfos(where: {or: [{owner: "${operator.toLowerCase()}"}, {delegateAddress: "${operator.toLowerCase()}"}]}) {
+      poolInfos(first: 1000, where: {or: [{owner: "${operator.toLowerCase()}"}, {delegateAddress: "${operator.toLowerCase()}"}]}) {
         address
         owner
         delegateAddress
         totalStakedEsXaiAmount
         totalStakedKeyAmount
+        metadata
       }
       refereeConfig(id: "RefereeConfig") {
         maxKeysPerPool
@@ -48,8 +52,9 @@ export async function getSentryWalletsForOperator(
   let pools: PoolInfo[] = result.poolInfos;
 
   if (whitelist && whitelist.length) {
-    wallets = wallets.filter(w => whitelist.includes(w.address));
-    pools = pools.filter(p => whitelist.includes(p.address));
+    const _whitelist = whitelist.map(w => w.toLowerCase())
+    wallets = wallets.filter(w => _whitelist.includes(w.address.toLowerCase()));
+    pools = pools.filter(p => _whitelist.includes(p.address.toLowerCase()));
   }
 
   return { wallets, pools, refereeConfig: result.refereeConfig };

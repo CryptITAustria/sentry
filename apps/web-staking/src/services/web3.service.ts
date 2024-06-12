@@ -305,6 +305,8 @@ export const getRedemptions = async (network: NetworkKey, walletAddress: string)
 					cachedRedemptions[i].completed = res.completed;
 					cachedRedemptions[i].cancelled = res.cancelled;
 					cachedRedemptions[i].endTime = Number(res.endTime) * 1000;
+					closed.push(redemption);
+					continue;
 				}
 			}
 
@@ -330,7 +332,7 @@ export const getRedemptions = async (network: NetworkKey, walletAddress: string)
 		}),
 
 		closed: closed.sort((a: RedemptionRequest, b: RedemptionRequest) => {
-			return a.endTime - b.endTime;
+			return b.endTime - a.endTime;
 		}),
 	};
 }
@@ -483,10 +485,13 @@ export const getPoolAddressAtIndex = async (network: NetworkKey, index: number):
 }
 
 let MAX_KEY_COUNT_PER_POOL = 0;
+let MAX_KEY_COUNT_PER_POOL_CACHED_AT = Date.now();
+
 export const getMaxKeyCount = async (network: NetworkKey): Promise<number> => {
-	if (MAX_KEY_COUNT_PER_POOL === 0) {
+	if (MAX_KEY_COUNT_PER_POOL === 0 || (Date.now() - MAX_KEY_COUNT_PER_POOL_CACHED_AT) / 1000 > 60) {
 		const web3Instance = getWeb3Instance(network);
 		const refereeContract = new web3Instance.web3.eth.Contract(RefereeAbi, web3Instance.refereeAddress);
+		MAX_KEY_COUNT_PER_POOL_CACHED_AT = Date.now();
 		MAX_KEY_COUNT_PER_POOL = Number(await refereeContract.methods.maxKeysPerPool().call() as BigInt);
 	}
 	return MAX_KEY_COUNT_PER_POOL;
@@ -592,7 +597,8 @@ export const toPoolInfo = async (
 	let ownerShare = Number(baseInfo.ownerShare) / POOL_SHARES_BASE;
 	let keyBucketShare = Number(baseInfo.keyBucketShare) / POOL_SHARES_BASE;
 	let stakedBucketShare = Number(baseInfo.stakedBucketShare) / POOL_SHARES_BASE;
-	let ownerLatestUnstakeRequestCompletionTime = Number(rawPoolInfo._ownerLatestUnstakeRequestLockTime) * 1000;
+	//Remove becasue of bug in the StakingPool contract, it will not return the correct _ownerLatestUnstakeRequestLockTime, we need to get it from the synced db or subgraph
+	// let ownerLatestUnstakeRequestCompletionTime = Number(rawPoolInfo._ownerLatestUnstakeRequestLockTime) * 1000;
 
 	if (updateSharesTimestamp != 0 && updateSharesTimestamp <= Date.now()) {
 		ownerShare = pendingShares[0]
@@ -601,9 +607,9 @@ export const toPoolInfo = async (
 		updateSharesTimestamp = 0;
 	}
 
-	if (ownerLatestUnstakeRequestCompletionTime != 0 && ownerLatestUnstakeRequestCompletionTime <= Date.now()) {
-		ownerLatestUnstakeRequestCompletionTime = 0;
-	}
+	// if (ownerLatestUnstakeRequestCompletionTime != 0 && ownerLatestUnstakeRequestCompletionTime <= Date.now()) {
+	// 	ownerLatestUnstakeRequestCompletionTime = 0;
+	// }
 
 	let userStakedKeyIds: number[] = [];
 	let userStakedEsXaiAmount = 0;
@@ -646,7 +652,7 @@ export const toPoolInfo = async (
 		updateSharesTimestamp,
 		ownerStakedKeys: Number(rawPoolInfo._ownerStakedKeys),
 		ownerRequestedUnstakeKeyAmount: Number(rawPoolInfo._ownerRequestedUnstakeKeyAmount),
-		ownerLatestUnstakeRequestCompletionTime,
+		// ownerLatestUnstakeRequestCompletionTime,
 		ownerShare,
 		keyBucketShare,
 		stakedBucketShare,

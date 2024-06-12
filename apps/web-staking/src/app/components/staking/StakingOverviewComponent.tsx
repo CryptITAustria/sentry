@@ -11,7 +11,7 @@ import { PagedPools } from "@/server/services/Pool.service";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import AgreeModalComponent from "../modal/AgreeModalComponents";
-import { useGetTotalStakedHooks, useGetUserInteractedPools } from "@/app/hooks/hooks";
+import { useGetMaxKeyPerPool, useGetTotalStakedHooks, useGetUserInteractedPools } from "@/app/hooks/hooks";
 import { WriteFunctions, executeContractWrite } from "@/services/web3.writes";
 import { loadingNotification, updateNotification } from "../notifications/NotificationsComponent";
 import { getNetwork, getTotalClaimAmount, mapWeb3Error } from "@/services/web3.service";
@@ -24,6 +24,7 @@ export const StakingOverviewComponent = ({ pagedPools }: { pagedPools: PagedPool
   const { userPools, isLoading, totalClaimableAmount } = useGetUserInteractedPools();
   const { totalStaked, maxStakedCapacity } = useGetTotalStakedHooks();
   const { tiers } = useGetTiers();
+  const { maxKeyPerPool } = useGetMaxKeyPerPool();
 
   const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
   const [currentPage, setCurrentPage] = useState(searchParams.get("page") ? Number(searchParams.get("page")) : 1);
@@ -104,7 +105,8 @@ export const StakingOverviewComponent = ({ pagedPools }: { pagedPools: PagedPool
   }
 
   const submitSearch = () => {
-    router.push(buildURI(searchValue, currentPage, showTableKeys, hideFullKeys, hideFullEsXai),
+    setCurrentPage(1);
+    router.push(buildURI(searchValue, 1, showTableKeys, hideFullKeys, hideFullEsXai),
       { scroll: false }
     );
   };
@@ -138,20 +140,20 @@ export const StakingOverviewComponent = ({ pagedPools }: { pagedPools: PagedPool
   }
 
   return (
-    <div className="flex sm:flex-col items-start lg:px-6 sm:px-3 sm:w-full">
+    <div className="relative flex sm:flex-col items-start lg:px-6 sm:px-0 sm:w-full">
       <AgreeModalComponent address={address} />
-      <div className="flex justify-between w-full flex-col xl:flex-row sm:mb-6 xl:mb-3">
-        <MainTitle title={"Staking"} />
+      <div className="flex justify-between w-full flex-col xl:flex-row sm:mb-[70px] lg:mb-6 xl:mb-3">
+        <MainTitle title={"Staking"} classNames="sm:indent-4 lg:indent-0" />
 
-        {address && <ClaimableRewardsComponent
+        {address && <div className="sm:w-[91%] absolute sm:right-[17px] sm:top-[85px] lg:right-[55px] lg:top-6 lg:w-[450px] shadow-light"><ClaimableRewardsComponent
           disabled={isLoading || transactionLoading || currentTotalClaimableAmount === 0}
           totalClaimAmount={currentTotalClaimableAmount}
           onClaim={onClaimAll}
-        />}
+        /></div>}
 
       </div>
 
-      {(address && (userPools.length > 0 || totalStaked > 0)) && <StakedPoolsTable v1Stake={totalStaked} v1MaxStake={maxStakedCapacity} userPools={userPools} tiers={tiers} />}
+      {(address && (userPools.length > 0 || totalStaked > 0)) && <StakedPoolsTable v1Stake={totalStaked} v1MaxStake={maxStakedCapacity} userPools={userPools} tiers={tiers} showTableKeys={showTableKeys} maxKeyPerPool={maxKeyPerPool} />}
 
       <SearchBarComponent
         searchValue={searchValue}
@@ -162,6 +164,9 @@ export const StakingOverviewComponent = ({ pagedPools }: { pagedPools: PagedPool
         filterCheckbox={showTableKeys ? hideFullKeys : hideFullEsXai}
         setFilterCheckbox={onClickFilterCB}
         onToggleShowKeys={onToggleShowKeys}
+        showedPools={pagedPools.count}
+        hiddenPools={pagedPools.totalPoolsInDB - pagedPools.count}
+        userPools={userPools.length}
       />
 
       <AvailablePoolsTableComponent
@@ -172,7 +177,8 @@ export const StakingOverviewComponent = ({ pagedPools }: { pagedPools: PagedPool
         setPage={setPage}
         address={address}
         tiers={tiers}
-      />
+        maxKeyPerPool={maxKeyPerPool}
+      /> 
     </div>
   );
 }

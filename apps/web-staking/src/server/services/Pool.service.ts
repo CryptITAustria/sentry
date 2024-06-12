@@ -3,17 +3,17 @@ import IPool from "../types/IPool";
 import { PoolInfo } from "@/types/Pool";
 import PoolModel from "../models/pool.schema";
 import { executeQuery } from "./Database.service";
-import { NetworkKey } from "@/services/web3.service";
+import { getMaxKeyCount, NetworkKey } from "@/services/web3.service";
 import { IDocument } from "@/server/types/IModel";
 
 export type PoolFilter = IPool | { _id: ObjectId | string } | { poolAddress: string };
 
-export async function findPool(filter: FilterQuery<IPool>): Promise<PoolInfo | null> {
+export async function findPool(filter: FilterQuery<IPool>): Promise<PoolInfo> {
 
 	try {
 		const pool = await executeQuery(PoolModel.findOne(filter).lean()) as IPool;
 		if (!pool) {
-			return null;
+			throw new Error(`ERROR @findPool: No pool found`);
 		};
 		return mapPool(pool);
 	} catch (error) {
@@ -28,7 +28,7 @@ type Pagination = {
 	// direction: 0 | 1,
 }
 
-export type PagedPools = { count: number, poolInfos: PoolInfo[] }
+export type PagedPools = { count: number, poolInfos: PoolInfo[], totalPoolsInDB: number }
 
 export const findPools = async ({
 	pagination = {
@@ -49,6 +49,9 @@ export const findPools = async ({
 	hideFullKeys?: boolean,
 	network: NetworkKey
 }): Promise<PagedPools> => {
+
+	const maxKeyCount = await getMaxKeyCount(network);
+
 	const filter: FilterQuery<IPool> = {
 		network
 	};
@@ -65,10 +68,10 @@ export const findPools = async ({
 	if (hideFullKeys) {
 		if (filter.$expr) {
 			//TODO what if maxKeyPerPool is updated ?
-			filter.$and = [{ $expr: filter.$expr }, { $expr: { $gt: [750, "$keyCount"] } }];
+			filter.$and = [{ $expr: filter.$expr }, { $expr: { $gt: [maxKeyCount, "$keyCount"] } }];
 			delete filter.$expr;
 		} else {
-			filter.$expr = { $gt: [750, "$keyCount"] }
+			filter.$expr = { $gt: [maxKeyCount, "$keyCount"] };
 		}
 	}
 
@@ -85,9 +88,14 @@ export const findPools = async ({
 			PoolModel.find(filter).countDocuments()
 		)) as number;
 
+		const totalPoolsInDB = (await executeQuery(
+            PoolModel.find().countDocuments()
+        )) as number;
+
 		return {
 			count: poolCount,
 			poolInfos: filteredPools.map((p) => mapPool(p)),
+			totalPoolsInDB
 		};
 	} catch (error) {
 		throw new Error(`ERROR @findPools: ${error}`);
@@ -139,7 +147,6 @@ export function mapPool(pool: IPool): PoolInfo {
 		ownerShare: pool.ownerShare,
 		keyBucketShare: pool.keyBucketShare,
 		stakedBucketShare: pool.stakedBucketShare,
-		maxKeyCount: 750,
 		userStakedEsXaiAmount: 0,
 		userClaimAmount: 0,
 		userStakedKeyIds: pool.userStakedKeyIds,
@@ -160,6 +167,7 @@ export function mapPool(pool: IPool): PoolInfo {
 		ownerRequestedUnstakeKeyAmount: pool.ownerRequestedUnstakeKeyAmount,
 		ownerLatestUnstakeRequestCompletionTime: pool.ownerLatestUnstakeRequestCompletionTime,
 		pendingShares: pool.pendingShares || [0, 0, 0],
+		visibility: pool.visibility
 	}
 };
 

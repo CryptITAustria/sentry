@@ -1,5 +1,6 @@
 import { SentryKey } from "@sentry/sentry-subgraph-client";
 import { GraphQLClient, gql } from 'graphql-request'
+import { config } from "../config.js";
 
 /**
  * 
@@ -10,13 +11,14 @@ import { GraphQLClient, gql } from 'graphql-request'
  * @returns List of sentry key objects with metadata.
  */
 export async function getSentryKeysFromGraph(
-  client: GraphQLClient,
   owners: string[],
   stakingPools: string[],
   includeSubmissions: boolean,
   submissionsFilter: { eligibleForPayout?: boolean, claimed?: boolean, latestChallengeNumber?: bigint }
 ): Promise<SentryKey[]> {
 
+  const client = new GraphQLClient(config.subgraphEndpoint);
+  
   let submissionQuery = ``;
   if (includeSubmissions) {
 
@@ -33,7 +35,7 @@ export async function getSentryKeysFromGraph(
     }
 
     submissionQuery = gql`
-        submissions(first: 4320, orderBy: challengeNumber, orderDirection: desc, where: {${submissionQueryFilter.join(",")}}) { 
+        submissions(first: 10000, orderBy: challengeNumber, orderDirection: desc, where: {${submissionQueryFilter.join(",")}}) { 
           challengeNumber
           nodeLicenseId
           claimAmount 
@@ -80,7 +82,6 @@ export async function getSentryKeysFromGraph(
         }
       }
     `
-
   const result = await client.request(query) as any;
   return result.sentryKeys;
 }
