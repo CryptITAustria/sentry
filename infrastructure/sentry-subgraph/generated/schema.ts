@@ -373,6 +373,14 @@ export class PoolInfo extends Entity {
   set createdTimestamp(value: BigInt) {
     this.set("createdTimestamp", Value.fromBigInt(value));
   }
+
+  get poolChallenges(): PoolChallengeLoader {
+    return new PoolChallengeLoader(
+      "PoolInfo",
+      this.get("id")!.toString(),
+      "poolChallenges",
+    );
+  }
 }
 
 export class UnstakeRequest extends Entity {
@@ -630,7 +638,7 @@ export class PoolFactoryConfig extends Entity {
   }
 }
 
-export class PoolChallenges extends Entity {
+export class PoolChallenge extends Entity {
   constructor(id: string) {
     super();
     this.set("id", Value.fromString(id));
@@ -638,24 +646,24 @@ export class PoolChallenges extends Entity {
 
   save(): void {
     let id = this.get("id");
-    assert(id != null, "Cannot save PoolChallenges entity without an ID");
+    assert(id != null, "Cannot save PoolChallenge entity without an ID");
     if (id) {
       assert(
         id.kind == ValueKind.STRING,
-        `Entities of type PoolChallenges must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+        `Entities of type PoolChallenge must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
       );
-      store.set("PoolChallenges", id.toString(), this);
+      store.set("PoolChallenge", id.toString(), this);
     }
   }
 
-  static loadInBlock(id: string): PoolChallenges | null {
-    return changetype<PoolChallenges | null>(
-      store.get_in_block("PoolChallenges", id),
+  static loadInBlock(id: string): PoolChallenge | null {
+    return changetype<PoolChallenge | null>(
+      store.get_in_block("PoolChallenge", id),
     );
   }
 
-  static load(id: string): PoolChallenges | null {
-    return changetype<PoolChallenges | null>(store.get("PoolChallenges", id));
+  static load(id: string): PoolChallenge | null {
+    return changetype<PoolChallenge | null>(store.get("PoolChallenge", id));
   }
 
   get id(): string {
@@ -1577,6 +1585,24 @@ export class SubmissionLoader extends Entity {
   load(): Submission[] {
     let value = store.loadRelated(this._entity, this._id, this._field);
     return changetype<Submission[]>(value);
+  }
+}
+
+export class PoolChallengeLoader extends Entity {
+  _entity: string;
+  _field: string;
+  _id: string;
+
+  constructor(entity: string, id: string, field: string) {
+    super();
+    this._entity = entity;
+    this._id = id;
+    this._field = field;
+  }
+
+  load(): PoolChallenge[] {
+    let value = store.loadRelated(this._entity, this._id, this._field);
+    return changetype<PoolChallenge[]>(value);
   }
 }
 
