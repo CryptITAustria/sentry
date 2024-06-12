@@ -146,12 +146,15 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   }
 
   let stakeAmount = sentryWallet.v1EsXaiStakeAmount
-  let keyCount = sentryWallet.keyCount.minus(sentryWallet.stakedKeyCount)
+  let keyCount = sentryWallet.keyCount.minus(sentryWallet.stakedKeyCount);
+  const isKeyAssignedToPool = sentryKey.assignedPool.toHexString() != new Address(0).toHexString();
+
+  const pool = PoolInfo.load(sentryKey.assignedPool.toHexString());
   // This if statement is only triggered if transaction was originated by a pool
-  if (sentryKey.assignedPool.toHexString() != new Address(0).toHexString()) {
-    const pool = PoolInfo.load(sentryKey.assignedPool.toHexString())
-    stakeAmount = pool!.totalStakedEsXaiAmount
-    keyCount = pool!.totalStakedKeyAmount
+  if (isKeyAssignedToPool) {
+    stakeAmount = pool!.totalStakedEsXaiAmount //We need to expect the pool entity to exist when a key is assigned, else the subgraph should fail
+    keyCount = pool!.totalStakedKeyAmount //We need to expect the pool entity to exist when a key is assigned, else the subgraph should fail
+  }
 
   const maxStakeAmount = getMaxStakeAmount(stakeAmount, keyCount, refereeConfig.maxStakeAmountPerLicense)
   const boostFactor = getBoostFactor(
@@ -174,10 +177,11 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   submission.assertionsStateRootOrConfirmData = assertionStateRootOrConfirmData.toHexString()
   submission.save()
 
-
+  if (isKeyAssignedToPool) {
     let poolChallenges = PoolChallenges.load(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
     if (poolChallenges == null) {
       poolChallenges = new PoolChallenges(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
+      poolChallenges.pool = pool!.id; //We need to expect the pool entity to exist when a key is assigned, else the subgraph should fail
       poolChallenges.challenge = challenge.id
       poolChallenges.submittedKeyCount = BigInt.fromI32(0)
       poolChallenges.claimKeyCount = BigInt.fromI32(0)
@@ -188,7 +192,6 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
     }
 
     poolChallenges.submittedKeyCount = poolChallenges.submittedKeyCount.plus(BigInt.fromI32(1))
-
     if (submission.eligibleForPayout) {
       poolChallenges.eligibleSubmissionsCount = poolChallenges.eligibleSubmissionsCount.plus(BigInt.fromI32(1))
     }
