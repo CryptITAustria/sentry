@@ -1,19 +1,15 @@
 import { GraphQLClient, gql } from "graphql-request";
 import { config } from "../config.js";
 
-// TODO: update type and corresponding code in function
+// TODO: update data types
 type PoolInfoToPoolChallenge = {
-  poolAddress: string;
-  shares: {
-    esXaiSplit: number;
-    keySplit: number;
-  };
+  address: string;
+  stakedBucketShare: number;
+  keyBucketShare: number;
   poolChallenges: {
     totalClaimedEsXaiAmount: number;
     totalStakedEsXaiAmount: number;
     totalStakedKeyAmount: number;
-    submittedKeyCount: number;
-    eligibleSubmissionsCount: number;
   }[];
 }
 
@@ -44,17 +40,20 @@ export async function getRewardRatesFromGraph(
     queryWhere = `, where: {address_in: [${poolAddresses.map(o => `"${o.toLowerCase()}"`).join(",")}]}`;
   }
 
-  // TODO: finish query!
+  const unixAverageWindowPlus5Mins = AVERAGE_WINDOW_DAYS * 24 * 60 * 60 * 1000 + 5 * 60 * 1000;
+  const startTimestamp = Math.floor((Date.now() - unixAverageWindowPlus5Mins)/1000);
+
+  // TODO: double check query
   const query = gql`
-    query PoolInfos {
-      poolInfos(first: 1000${queryWhere}) {
-        address
-        owner
-        delegateAddress
+    poolInfos(first: 50000, orderBy: totalStakedEsXaiAmount, orderDirection: desc${queryWhere}) {
+      poolChallenges(where: {challenge_: {assertionTimestamp_gt: ${startTimestamp}}}) {
+        totalClaimedEsXaiAmount
         totalStakedEsXaiAmount
         totalStakedKeyAmount
-        metadata
       }
+      address
+      keyBucketShare
+      stakedBucketShare
     }
   `
 
@@ -62,20 +61,26 @@ export async function getRewardRatesFromGraph(
 
   const poolRewardRates: PoolRewardRates[] = poolInfos.map(poolInfo => {
 
+    // shares are saved as BigInt with percent values with 4 trailing "0": 50 % would equal "500000"
+    const stakedBucketShare = poolInfo.stakedBucketShare / 10**-6;
+
     // Take esXAI share of total claimed rewards and divide through total staked esXAI amount to get total claimed rewards per staked esXAI
     // Then divide through average window to get daily average
     const averageDailyRewardPerEsXai = poolInfo.poolChallenges
       .reduce((sum, { totalClaimedEsXaiAmount, totalStakedEsXaiAmount }) =>
-        sum + (totalClaimedEsXaiAmount * poolInfo.shares.esXaiSplit / totalStakedEsXaiAmount), 0) / AVERAGE_WINDOW_DAYS;
+        sum + (totalClaimedEsXaiAmount * stakedBucketShare / totalStakedEsXaiAmount), 0) / AVERAGE_WINDOW_DAYS;
 
+
+    // shares are saved as BigInt with percent values with 4 trailing "0": 50 % would equal "500000"
+    const keyBucketShare = poolInfo.keyBucketShare / 10**-6;
 
     // Take key share of total claimed rewards and divide through total staked keys to get total claimed rewards per staked key
     // Then divide through average window to get daily average
     const averageDailyRewardPerKey = poolInfo.poolChallenges
       .reduce((sum, { totalClaimedEsXaiAmount, totalStakedKeyAmount }) =>
-        sum + (totalClaimedEsXaiAmount * poolInfo.shares.keySplit / totalStakedKeyAmount), 0) / AVERAGE_WINDOW_DAYS;
+        sum + (totalClaimedEsXaiAmount * keyBucketShare / totalStakedKeyAmount), 0) / AVERAGE_WINDOW_DAYS;
 
-    return { poolAddress: poolInfo.poolAddress, averageDailyRewardPerEsXai, averageDailyRewardPerKey };
+    return { poolAddress: poolInfo.address, averageDailyRewardPerEsXai, averageDailyRewardPerKey };
   });
 
   return poolRewardRates;
