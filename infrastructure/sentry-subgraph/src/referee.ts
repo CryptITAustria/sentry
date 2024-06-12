@@ -19,7 +19,7 @@ import {
   SentryKey,
   RefereeConfig,
   PoolInfo,
-  PoolChallenges
+  PoolChallenge
 } from "../generated/schema"
 import { checkIfSubmissionEligible } from "./utils/checkIfSubmissionEligible"
 import { getBoostFactor } from "./utils/getBoostFactor"
@@ -179,22 +179,22 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   submission.save()
 
   if (isKeyAssignedToPool) {
-    let poolChallenges = PoolChallenges.load(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
-    if (poolChallenges == null) {
-      poolChallenges = new PoolChallenges(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
-      poolChallenges.pool = pool!.id; //We need to expect the pool entity to exist when a key is assigned, else the subgraph should fail
-      poolChallenges.challenge = challenge.id
-      poolChallenges.submittedKeyCount = BigInt.fromI32(0)
-      poolChallenges.claimKeyCount = BigInt.fromI32(0)
-      poolChallenges.totalClaimedEsXaiAmount = BigInt.fromI32(0)
-      poolChallenges.eligibleSubmissionsCount = BigInt.fromI32(0)
-      poolChallenges.totalStakedEsXaiAmount = stakeAmount
-      poolChallenges.totalStakedKeyAmount = keyCount
+    let poolChallenge = PoolChallenge.load(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
+    if (poolChallenge == null) {
+      poolChallenge = new PoolChallenge(sentryKey.assignedPool.toHexString() + "_" + event.params.challengeId.toString())
+      poolChallenge.pool = pool!.id; //We need to expect the pool entity to exist when a key is assigned, else the subgraph should fail
+      poolChallenge.challenge = challenge.id
+      poolChallenge.submittedKeyCount = BigInt.fromI32(0)
+      poolChallenge.claimKeyCount = BigInt.fromI32(0)
+      poolChallenge.totalClaimedEsXaiAmount = BigInt.fromI32(0)
+      poolChallenge.eligibleSubmissionsCount = BigInt.fromI32(0)
+      poolChallenge.totalStakedEsXaiAmount = stakeAmount
+      poolChallenge.totalStakedKeyAmount = keyCount
     }
 
-    poolChallenges.submittedKeyCount = poolChallenges.submittedKeyCount.plus(BigInt.fromI32(1))
+    poolChallenge.submittedKeyCount = poolChallenge.submittedKeyCount.plus(BigInt.fromI32(1))
     if (submission.eligibleForPayout) {
-      poolChallenges.eligibleSubmissionsCount = poolChallenges.eligibleSubmissionsCount.plus(BigInt.fromI32(1))
+      poolChallenge.eligibleSubmissionsCount = poolChallenge.eligibleSubmissionsCount.plus(BigInt.fromI32(1))
     } 
   } else {
     if (submission.eligibleForPayout) {

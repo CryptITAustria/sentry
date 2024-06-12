@@ -79,6 +79,7 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - PoolInfo
+        - PoolChallenge
       abis:
         - name: PoolFactory
           file: ./abis/PoolFactory.json
