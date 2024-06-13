@@ -5,6 +5,10 @@ import { config } from '../config.js';
 import { PoolFactoryAbi } from '../abis/PoolFactoryAbi.js';
 import { updatePoolInDB } from './updatePoolInDB.js';
 import { retry } from '../utils/retry.js';
+import { listenForChallenges } from '../operator/listenForChallenges.js';
+import { Challenge } from '../challenger/getChallenge.js';
+import { IPool, PoolSchema } from './types.js';
+import { getRewardRatesFromGraph } from '../subgraph/getRewardRatesFromGraph.js';
 
 /**
  * Arguments required to initialize the data centralization runtime.
@@ -89,6 +93,42 @@ export async function dataCentralizationRuntime({
 		},
 	}).stop;
 
+	const closeChallengeListener = listenForChallenges(async (challengeNumber: bigint, challenge: Challenge, event?: any) => {
+		const PoolModel = mongoose.models.Pool || mongoose.model<IPool>('Pool', PoolSchema);
+
+		const pools = await PoolModel.find({}).select("poolAddress esXaiRewardRate keyRewardRate").lean();
+		const mappedPools: { [poolAddress: string]: { esXaiRewardRate?: number, keyRewardRate?: number } } = {};
+
+		pools.forEach(p => {
+			mappedPools[p.poolAddress] = {
+				esXaiRewardRate: p.esXaiRewardRate,
+				keyRewardRate: p.keyRewardRate
+			};
+		});
+
+		const updatedPools = await getRewardRatesFromGraph([]);
+
+		for (const updatedPool of updatedPools) {
+
+			if (!mappedPools[updatedPool.poolAddress] ||
+				mappedPools[updatedPool.poolAddress].esXaiRewardRate == undefined || 
+				mappedPools[updatedPool.poolAddress].esXaiRewardRate != updatedPool.averageDailyRewardPerEsXai || 
+				mappedPools[updatedPool.poolAddress].keyRewardRate == undefined || 
+				mappedPools[updatedPool.poolAddress].keyRewardRate != updatedPool.averageDailyRewardPerKey) {
+
+				await PoolModel.updateOne(
+					{ poolAddress: updatedPool.poolAddress },
+					{
+						$set: {
+							esXaiRewardRate: updatedPool.averageDailyRewardPerEsXai,
+							keyRewardRate: updatedPool.averageDailyRewardPerKey
+						}
+					},
+				);
+			}
+		}
+	});
+
 	/**
 	 * Stops the data centralization runtime.
 	 * @returns {Promise<void>} A promise that resolves when the runtime is successfully stopped.
@@ -98,6 +138,7 @@ export async function dataCentralizationRuntime({
 		await mongoose.disconnect();
 		logFunction('Disconnected from MongoDB.');
 
+		closeChallengeListener();
 		// Remove event listener listener.
 		stopListener();
 		logFunction('Event listener removed.');

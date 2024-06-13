@@ -12,7 +12,7 @@ export function updatePoolChallengeOnClaim(challengeId: BigInt, sentryKey: Sentr
   if (sentryKey.assignedPool.toHexString() != new Address(0).toHexString()) {
     //Load the Pool Challenges entity
     let poolChallenges = PoolChallenge.load(sentryKey.assignedPool.toHexString() + "_" + challengeId.toString());
-    //Return warning if null
+
     if (poolChallenges == null) {
       // There can be a scenario where a key got staked after the submission and then claimed for the pool
       // This would mean the PoolChallenge was not created and we either want to create it now or just not count it
