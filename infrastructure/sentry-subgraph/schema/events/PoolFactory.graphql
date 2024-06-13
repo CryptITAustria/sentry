@@ -16,7 +16,7 @@ type PoolInfo @entity(immutable: false) {
   ownerRequestedUnstakeKeyAmount: BigInt!
   ownerLatestUnstakeRequestCompletionTime: BigInt!
   createdTimestamp: BigInt!
-  poolChallenge: [PoolChallenge!]! @derivedFrom(field: "pool")
+  poolChallenges: [PoolChallenge!]! @derivedFrom(field: "pool")
 }
 
 type UnstakeRequest @entity(immutable: false) {
