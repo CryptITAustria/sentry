@@ -14,8 +14,8 @@ export function updatePoolChallengeOnClaim(challengeId: BigInt, sentryKey: Sentr
     let poolChallenges = PoolChallenge.load(sentryKey.assignedPool.toHexString() + "_" + challengeId.toString());
     //Return warning if null
     if (poolChallenges == null) {
-      // TODO there can be a scenario where a key got staked after the submission and then claimed for the pool
-      // this would mean the PoolChallenge was not created and we either want to create it now or just not count it, then we should not print a warning but an info
+      // There can be a scenario where a key got staked after the submission and then claimed for the pool
+      // This would mean the PoolChallenge was not created and we either want to create it now or just not count it
       const pool = PoolInfo.load(sentryKey.assignedPool.toHexString())
       poolChallenges = new PoolChallenge(sentryKey.assignedPool.toHexString() + "_" + challengeId.toString())
       poolChallenges.pool = pool!.id; //We need to expect the pool entity to exist when a key is assigned, else the subgraph should fail
@@ -26,9 +26,6 @@ export function updatePoolChallengeOnClaim(challengeId: BigInt, sentryKey: Sentr
       poolChallenges.eligibleSubmissionsCount = BigInt.fromI32(0)
       poolChallenges.totalStakedEsXaiAmount = pool!.totalStakedEsXaiAmount
       poolChallenges.totalStakedKeyAmount = pool!.totalStakedKeyAmount
-
-      log.info("SentryKey was not yet assigned on submit assertion. PoolChallenges updatePoolChallengeOnClaim: keyID: " + sentryKey.id.toString() + ", challengeId: " + challengeId.toString() + ", TX: " + transactionHash.toHexString(), []);
-      return;
     }
     //Increment key count and esXai amount claimed
     poolChallenges.claimKeyCount = poolChallenges.claimKeyCount.plus(BigInt.fromI32(1));
