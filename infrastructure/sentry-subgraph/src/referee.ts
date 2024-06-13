@@ -485,7 +485,7 @@ export function handleApproval(event: ApprovalEvent): void {
 }
 
 export function handleStakedV1(event: StakedV1): void {
-  let sentryWallet = SentryWallet.load(event.params.user.toHexString())
+  const sentryWallet = SentryWallet.load(event.params.user.toHexString())
   if (!sentryWallet) {
     log.warning("Failed to find sentryWallet handleStakedV1 TX: " + event.transaction.hash.toHexString(), [])
     return
