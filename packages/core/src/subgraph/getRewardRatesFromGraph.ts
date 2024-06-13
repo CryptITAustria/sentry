@@ -4,11 +4,11 @@ import { PoolInfo } from "@sentry/sentry-subgraph-client";
 
 type PoolRewardRates = {
   poolAddress: string;
-  averageDailyRewardPerEsXai: number;
-  averageDailyRewardPerKey: number;
+  averageDailyEsXaiReward: number;
+  averageDailyKeyReward: number;
 }
 
-const AVERAGE_WINDOW_DAYS = 7;
+const AVERAGE_WINDOW_DAYS = 7n;
 
 /**
  * 
@@ -26,7 +26,7 @@ export async function getRewardRatesFromGraph(
     queryWhere = `, where: {address_in: [${poolAddresses.map(o => `"${o.toLowerCase()}"`).join(",")}]}`;
   }
 
-  const unixAverageWindowPlus5Mins = AVERAGE_WINDOW_DAYS * 24 * 60 * 60 * 1000 + 5 * 60 * 1000;
+  const unixAverageWindowPlus5Mins = Number(AVERAGE_WINDOW_DAYS) * 24 * 60 * 60 * 1000 + 5 * 60 * 1000;
   const startTimestamp = Math.floor((Date.now() - unixAverageWindowPlus5Mins)/1000);
 
   const query = gql`
@@ -45,31 +45,51 @@ export async function getRewardRatesFromGraph(
   `
 
   const result = await client.request(query) as any;
-
   const poolInfos: PoolInfo[] = result.poolInfos;
 
-  const poolRewardRates: PoolRewardRates[] = poolInfos.map((poolInfo: PoolInfo) => {
+  const poolRewardRates: PoolRewardRates[] = [];
 
-    // shares are saved as BigInt with percent values with 4 trailing "0": 50 % would equal "500000"
-    const stakedBucketShare = poolInfo.stakedBucketShare;
+  for (let index = 0; index < poolInfos.length; index++) {
 
-    // Take esXAI share of total claimed rewards and divide through total staked esXAI amount to get total claimed rewards per staked esXAI
-    // Then divide through average window to get daily average
-    const averageDailyRewardPerEsXai = poolInfo.poolChallenges
-      .reduce((sum, { totalClaimedEsXaiAmount, totalStakedEsXaiAmount }) =>
-        sum + (totalClaimedEsXaiAmount * stakedBucketShare / totalStakedEsXaiAmount), 0) / AVERAGE_WINDOW_DAYS;
+    const poolInfo: PoolInfo = result.poolInfos[index];
 
-    // shares are saved as BigInt with percent values with 4 trailing "0": 50 % would equal "500000"
-    const keyBucketShare = poolInfo.keyBucketShare;
+    const stakedBucketShare = BigInt(poolInfo.stakedBucketShare);
+    const keyBucketShare = BigInt(poolInfo.keyBucketShare);
 
-    // Take key share of total claimed rewards and divide through total staked keys to get total claimed rewards per staked key
-    // Then divide through average window to get daily average
-    const averageDailyRewardPerKey = poolInfo.poolChallenges
-      .reduce((sum, { totalClaimedEsXaiAmount, totalStakedKeyAmount }) =>
-        sum + (totalClaimedEsXaiAmount * keyBucketShare / totalStakedKeyAmount), 0) / AVERAGE_WINDOW_DAYS;
+    let totalEsXaiRewards = 0n;
+    let totalKeyRewards = 0n;
 
-    return { poolAddress: poolInfo.address, averageDailyRewardPerEsXai, averageDailyRewardPerKey };
-  });
+    poolInfo.poolChallenges.forEach(challenge => {
+      const stakedEsXaiAmountWei = BigInt(challenge.totalStakedEsXaiAmount);
+      const stakedKeyAmount = BigInt(challenge.totalStakedKeyAmount);
+
+      // esXAI
+      const esXaiBucketClaimWei = (BigInt(challenge.totalClaimedEsXaiAmount) * stakedBucketShare) / 1_000_000n;
+      const rewardPerStakedEsXaiWei = esXaiBucketClaimWei / (stakedEsXaiAmountWei || 1n);
+
+      totalEsXaiRewards += rewardPerStakedEsXaiWei;
+
+      // keys
+      const keyBucketClaimWei = (BigInt(challenge.totalClaimedEsXaiAmount) * keyBucketShare) / 1_000_000n;
+      const rewardPerStakedKeyWei = keyBucketClaimWei / (stakedKeyAmount || 1n);
+
+      totalKeyRewards += rewardPerStakedKeyWei;
+    });
+
+    const averageDailyRewardPerEsXai = totalEsXaiRewards / AVERAGE_WINDOW_DAYS;
+    const averageDailyRewardPerKey = totalKeyRewards / AVERAGE_WINDOW_DAYS
+
+    const averageDailyEsXaiReward = Number(averageDailyRewardPerEsXai);
+    const averageDailyKeyReward = Number(averageDailyRewardPerKey);
+
+    poolRewardRates.push({ poolAddress: poolInfo.address, averageDailyEsXaiReward, averageDailyKeyReward });
+
+    // every 10 pools wait 100 ms to unblock thread
+    // TODO: open new thread
+    if (index % 10 == 0) {
+      await new Promise((resolve) => { setTimeout(resolve, 100) });
+    }
+  }
 
   return poolRewardRates;
 }

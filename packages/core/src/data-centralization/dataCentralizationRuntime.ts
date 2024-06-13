@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { EventListenerError, resilientEventListener } from '../utils/resilientEventListener.js';
-import { LogDescription } from 'ethers';
+import { LogDescription, getAddress } from 'ethers';
 import { config } from '../config.js';
 import { PoolFactoryAbi } from '../abis/PoolFactoryAbi.js';
 import { updatePoolInDB } from './updatePoolInDB.js';
@@ -109,23 +109,19 @@ export async function dataCentralizationRuntime({
 		const updatedPools = await getRewardRatesFromGraph([]);
 
 		for (const updatedPool of updatedPools) {
+			const checkAddress = getAddress(updatedPool.poolAddress);
 
-			if (!mappedPools[updatedPool.poolAddress] ||
-				mappedPools[updatedPool.poolAddress].esXaiRewardRate == undefined || 
-				mappedPools[updatedPool.poolAddress].esXaiRewardRate != updatedPool.averageDailyRewardPerEsXai || 
-				mappedPools[updatedPool.poolAddress].keyRewardRate == undefined || 
-				mappedPools[updatedPool.poolAddress].keyRewardRate != updatedPool.averageDailyRewardPerKey) {
+			if (!mappedPools[checkAddress]) continue;
 
-				await PoolModel.updateOne(
-					{ poolAddress: updatedPool.poolAddress },
-					{
-						$set: {
-							esXaiRewardRate: updatedPool.averageDailyRewardPerEsXai,
-							keyRewardRate: updatedPool.averageDailyRewardPerKey
-						}
-					},
-				);
-			}
+			await PoolModel.updateOne(
+				{ poolAddress: checkAddress },
+				{
+					$set: {
+						esXaiRewardRate: updatedPool.averageDailyEsXaiReward,
+						keyRewardRate: updatedPool.averageDailyKeyReward
+					}
+				},
+			);
 		}
 	});
 
