@@ -9,6 +9,7 @@ import { listenForChallenges } from '../operator/listenForChallenges.js';
 import { Challenge } from '../challenger/getChallenge.js';
 import { IPool, PoolSchema } from './types.js';
 import { getRewardRatesFromGraph } from '../subgraph/getRewardRatesFromGraph.js';
+import { sendSlackNotification } from '../utils/sendSlackNotification.js';
 
 /**
  * Arguments required to initialize the data centralization runtime.
@@ -95,8 +96,14 @@ export async function dataCentralizationRuntime({
 
 	const closeChallengeListener = listenForChallenges(async (challengeNumber: bigint, challenge: Challenge, event?: any) => {
 		const PoolModel = mongoose.models.Pool || mongoose.model<IPool>('Pool', PoolSchema);
+		const startTime = new Date().toISOString();
 
 		const pools = await PoolModel.find({}).select("poolAddress esXaiRewardRate keyRewardRate").lean();
+		const slackStartMessage = `Found ${pools.length} pools to update. Starting to update @ ${startTime}`;
+		const poolChallengeWebhookUrl = process.env.POOL_CHALLENGE_SLACK_WEBHOOK_URL || '';
+		const poolChallengeSlackOAuthToken = process.env.POOL_CHALLENGE_SLACK_OAUTH_TOKEN || '';
+		sendSlackNotification(poolChallengeWebhookUrl, slackStartMessage, poolChallengeSlackOAuthToken);
+
 		const mappedPools: { [poolAddress: string]: { esXaiRewardRate?: number, keyRewardRate?: number } } = {};
 
 		pools.forEach(p => {
@@ -127,6 +134,11 @@ export async function dataCentralizationRuntime({
 				);
 			}
 		}
+
+		const endTime = new Date().toISOString();
+		const duration = new Date(endTime).getTime() - new Date(startTime).getTime();
+		const slackEndMessage = `Updated ${pools.length} pools. Started @ ${startTime} and ended @ ${endTime} taking ${Math.floor(duration/1000)} seconds.`;
+		sendSlackNotification(poolChallengeWebhookUrl, slackEndMessage, poolChallengeSlackOAuthToken);
 	});
 
 	/**
