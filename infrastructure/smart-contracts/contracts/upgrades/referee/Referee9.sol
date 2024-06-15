@@ -219,7 +219,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     event StakedV1(address indexed user, uint256 amount, uint256 totalStaked);
     event UnstakeV1(address indexed user, uint256 amount, uint256 totalStaked);
     //TODO - review new events
-    event HalvingEvent( uint256 triggeredChallenge, uint256 totalSupply, uint256 nextHalvingThreshold);
+    event HalvingEvent(uint256 triggeredChallenge, uint256 totalSupply, uint256 nextHalvingThreshold);
     event ReverseHalvingEvent(uint256 triggeredChallenge, uint256 totalSupply, uint256 nextHalvingThreshold);
     event StakingTierSet(uint256 indexed tier, uint256 threshold, uint256 boostFactor);
 
@@ -947,6 +947,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
      * @dev Admin update the staking tier threshold percentages and the corresponding reward chance boosts
      * @param newPercentages The new percentages of the tiers
      * @param newBoostFactors The new boost factors for the tiers
+     * @param activateNow If true, the new percentages and boost factors will be activated immediately
      */
     function updateStakingTierPercentages(uint256[] memory newPercentages, uint256[] memory newBoostFactors, bool activateNow) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _updateRewardTierPercentages(newPercentages, newBoostFactors, activateNow);
@@ -1075,7 +1076,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
 
     /**
      * @notice Executes a halving event.
-        * @param totalSupply The current total supply of XAI.
+     * @param totalSupply The current total supply of XAI.
     */
     function _executeHalving(uint256 totalSupply) private {
         uint256 maxSupply = Xai(xaiAddress).MAX_SUPPLY();
@@ -1088,7 +1089,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     
     /**
      * @notice Executes a reverse halving event.
-        * @param totalSupply The current total supply of XAI.
+     * @param totalSupply The current total supply of XAI.
     */
     function _executeReverseHalving(uint256 totalSupply) private {
         uint256 diff = halvingThreshold - reverseHalvingThreshold;
@@ -1100,10 +1101,10 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
 
     /**
      * @notice Updates the staking tier percentages, boost factors and reward tier staking thresholds.
-     * @dev This function is only called internally from function(s) with Admin rights or the initializer.
+     * @dev This function should only be called internally from function(s) with Admin rights or the initializer.
      * @param _newPercentages The new percentages of the tiers.
      * @param _newBoostFactors The new boost factors for the tiers.
-     * @param activateNow A boolean to determine if the new settings should be activated immediately.     
+     * @param activateNow A boolean to determine if the new settings should be activated immediately or at next halving event.     
     */
     function _updateRewardTierPercentages(uint256[] memory _newPercentages, uint256[] memory _newBoostFactors, bool activateNow) private {
         require(_newPercentages.length == _newBoostFactors.length, "37");
@@ -1124,7 +1125,6 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
                 stakeAmountBoostFactors[i] = boostFactor;
                 emit StakingTierSet(i, newThreshold, boostFactor);
             }
-            
         }
     }
 
