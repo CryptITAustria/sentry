@@ -228,10 +228,10 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
         //TODO - review initializer
         // Set Initial Tier Percentages
         uint256[] memory _initTierPercentageThresholds = new uint256[](4);
-        _initTierPercentageThresholds[0] = 100;
-        _initTierPercentageThresholds[1] = 300;
-        _initTierPercentageThresholds[2] = 500;
-        _initTierPercentageThresholds[3] = 1000;
+        _initTierPercentageThresholds[0] = 100; // Get these percentages from management
+        _initTierPercentageThresholds[1] = 300; // Get these percentages from management
+        _initTierPercentageThresholds[2] = 500; // Get these percentages from management
+        _initTierPercentageThresholds[3] = 1000; // Get these percentages from management
 
         // Set Initial Boost Factors
         uint256[] memory _initBoostFactors = new uint256 [](4);
