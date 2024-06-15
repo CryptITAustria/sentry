@@ -169,7 +169,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[487] private __gap;
+    uint256[486] private __gap;
 
     // Struct for the submissions
     struct Submission {
