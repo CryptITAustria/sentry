@@ -1091,9 +1091,9 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
         * @param totalSupply The current total supply of XAI.
     */
     function _executeReverseHalving(uint256 totalSupply) private {
-        halvingThreshold = reverseHalvingThreshold;
-        //TODO Revisit this math, as I don't believe this is currently correct
-        reverseHalvingThreshold = reverseHalvingThreshold / 2;
+        uint256 diff = halvingThreshold - reverseHalvingThreshold;
+        halvingThreshold = reverseHalvingThreshold;        
+        reverseHalvingThreshold = halvingThreshold - (diff * 2);
         _setRewardTierThresholds();
         emit ReverseHalvingEvent(challengeCounter, totalSupply, halvingThreshold);
     }
