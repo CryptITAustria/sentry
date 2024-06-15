@@ -944,6 +944,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
         stakeAmountBoostFactors[index] = newBoostFactor;
     }
 
+    //TODO review new setter
     /**
      * @dev Admin update the staking tier threshold percentages and the corresponding reward chance boosts
      * @param newPercentages The new percentages of the tiers. Should be in basis points in ascending order. 1% = 100 basis points.
