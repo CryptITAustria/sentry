@@ -211,6 +211,9 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     event KycStatusChanged(address indexed wallet, bool isKycApproved);
     event InvalidSubmission(uint256 indexed challengeId, uint256 nodeLicenseId);
     event InvalidBatchSubmission(uint256 indexed challengeId, address operator, uint256 keysLength);
+    // TODO Talk to Chris about adding additional fields in the next two events for(claiming pool/key?)
+    // to allow reward totals to be incremented and reward rate calculations to be queried from the db
+    // vs calculated in the Graph upon each challenge?
     event RewardsClaimed(uint256 indexed challengeId, uint256 amount);
     event BatchRewardsClaimed(uint256 indexed challengeId, uint256 totalReward, uint256 keysLength);
     event ChallengeExpired(uint256 indexed challengeId);
