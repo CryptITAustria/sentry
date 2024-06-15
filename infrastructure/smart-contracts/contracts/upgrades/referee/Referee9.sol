@@ -946,8 +946,8 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
 
     /**
      * @dev Admin update the staking tier threshold percentages and the corresponding reward chance boosts
-     * @param newPercentages The new percentages of the tiers
-     * @param newBoostFactors The new boost factors for the tiers
+     * @param newPercentages The new percentages of the tiers. Should be in basis points in ascending order. 1% = 100 basis points.
+     * @param newBoostFactors The new boost factors for the tiers. Should be in ascending order.
      * @param activateNow If true, the new percentages and boost factors will be activated immediately
      */
     function updateStakingTierPercentages(uint256[] memory newPercentages, uint256[] memory newBoostFactors, bool activateNow) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -1103,8 +1103,8 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     /**
      * @notice Updates the staking tier percentages, boost factors and reward tier staking thresholds.
      * @dev This function should only be called internally from function(s) with Admin rights or the initializer.
-     * @param _newPercentages The new percentages of the tiers.
-     * @param _newBoostFactors The new boost factors for the tiers.
+     * @param _newPercentages The new percentages of the tiers. Should be in basis points in ascending order. 1% = 100 basis points.
+     * @param _newBoostFactors The new boost factors for the tiers. Should be in ascending order.
      * @param activateNow A boolean to determine if the new settings should be activated immediately or at next halving event.     
     */
     function _updateRewardTierPercentages(uint256[] memory _newPercentages, uint256[] memory _newBoostFactors, bool activateNow) private {
@@ -1120,7 +1120,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
             require(newPercentage > 0 && newPercentage <=10000, "51"); // TODO confirm the max allowed percentage
             require(newPercentage > _newPercentages[i-1], "51"); // Ensure the new percentage is higher than the previous one
 
-            // Active the new tier settings now if applicable
+            // Activate the new tier settings now if applicable
             if (activateNow) {
                 uint256 newThreshold = (getCombinedTotalSupply() * stakeTierPercentages[i]) / 10000;
                 stakeAmountTierThresholds[i] = newThreshold;
