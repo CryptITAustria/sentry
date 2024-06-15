@@ -946,7 +946,9 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
 
     //TODO review new setter
     /**
-     * @dev Admin update the staking tier threshold percentages and the corresponding reward chance boosts
+     * @dev Admin update the staking tier threshold percentages and the corresponding reward chance boosts.
+     * @notice This function should be used in lieu of the addStakingTier and removeStakingTier functions to ensure
+     * array sizes match, and data is validated including variable values and variable order.
      * @param newPercentages The new percentages of the tiers. Should be in basis points in ascending order. 1% = 100 basis points.
      * @param newBoostFactors The new boost factors for the tiers. Should be in ascending order.
      * @param activateNow If true, the new percentages and boost factors will be activated immediately
