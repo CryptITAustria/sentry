@@ -9,7 +9,7 @@ import { listenForChallenges } from '../operator/listenForChallenges.js';
 import { Challenge } from '../challenger/getChallenge.js';
 import { IPool, PoolSchema } from './types.js';
 import { getRewardRatesFromGraph } from '../subgraph/getRewardRatesFromGraph.js';
-import { sendPoolChallengeNotification } from '../utils/index.js';
+import { sendSlackNotification } from '../utils/index.js';
 
 /**
  * Arguments required to initialize the data centralization runtime.
@@ -18,6 +18,8 @@ import { sendPoolChallengeNotification } from '../utils/index.js';
  */
 interface DataCentralizationRuntimeArgs {
 	mongoUri: string;
+	slackWebHookUrl: string;
+	slackOAuthToken: string;
 	logFunction?: (log: string) => void;
 }
 
@@ -36,6 +38,8 @@ const toSaveString = (obj: any) => {
  */
 export async function dataCentralizationRuntime({
 	mongoUri,
+	slackWebHookUrl,
+	slackOAuthToken,
 	logFunction = (_) => { }
 }: DataCentralizationRuntimeArgs): Promise<() => Promise<void>> {
 
@@ -102,7 +106,7 @@ export async function dataCentralizationRuntime({
 		const pools = await PoolModel.find({}).select("poolAddress esXaiRewardRate keyRewardRate").lean();
 
 		const slackStartMessage = `Found ${pools.length} pools to update. Starting to update @ ${startTime}`;
-		sendPoolChallengeNotification(slackStartMessage);
+		sendSlackNotification(slackWebHookUrl, slackStartMessage, slackOAuthToken);
 
 		const mappedPools: { [poolAddress: string]: { esXaiRewardRate?: number, keyRewardRate?: number } } = {};
 
@@ -115,18 +119,18 @@ export async function dataCentralizationRuntime({
 
 		const startRewardRateTimestamp = new Date().getTime();
 		const startRewardRatesMessage = `Started getting reward rates @ ${new Date(startRewardRateTimestamp).toISOString()}`;
-		sendPoolChallengeNotification(startRewardRatesMessage);
+		sendSlackNotification(slackWebHookUrl, startRewardRatesMessage, slackOAuthToken);
 		
 		const updatedPools = await getRewardRatesFromGraph([]);
 
 		const endRewardRateTimestamp = new Date().getTime();
 		const durationRewardRates = endRewardRateTimestamp - startRewardRateTimestamp;
 		const endRewardRatesMessage = `Finished getting reward rates @ ${new Date(endRewardRateTimestamp).toISOString()} taking ${Math.floor(durationRewardRates/1000)} seconds.`;
-		sendPoolChallengeNotification(endRewardRatesMessage);
+		sendSlackNotification(slackWebHookUrl,endRewardRatesMessage, slackOAuthToken);
 
 		const startUpdateTimestamp = new Date().getTime();
 		const startUpdateMessage = `Started updating MongoDb @ ${new Date(startUpdateTimestamp).toISOString()}`;
-		sendPoolChallengeNotification(startUpdateMessage);
+		sendSlackNotification(slackWebHookUrl, startUpdateMessage, slackOAuthToken);
 
 		for (const updatedPool of updatedPools) {
 			if (!mappedPools[updatedPool.poolAddress] ||
@@ -150,17 +154,17 @@ export async function dataCentralizationRuntime({
 		const endUpdateTimestamp = new Date().getTime();
 		const durationUpdate = endUpdateTimestamp - startUpdateTimestamp;
 		const endUpdateMessage = `Finished updating MongoDb @ ${new Date(endUpdateTimestamp).toISOString()} taking ${Math.floor(durationUpdate/1000)} seconds.`;
-		sendPoolChallengeNotification(endUpdateMessage);
+		sendSlackNotification(slackWebHookUrl, endUpdateMessage, slackOAuthToken);
 
 		const endTime = new Date().toISOString();
 		const duration = new Date(endTime).getTime() - new Date(startTime).getTime();
 		const slackEndMessage = `Updated ${pools.length} pools. Started @ ${startTime} and ended @ ${endTime} taking ${Math.floor(duration/1000)} seconds.`;
-		sendPoolChallengeNotification(slackEndMessage);
+		sendSlackNotification(slackWebHookUrl, slackEndMessage, slackOAuthToken);
 
 		} catch (error) {
 			const errorTime = new Date().toISOString();
 			const slackErrorMesssage = `Error updating pools: ${JSON.stringify(error)} @ ${errorTime}`;
-			sendPoolChallengeNotification(slackErrorMesssage);		
+			sendSlackNotification(slackWebHookUrl, slackErrorMesssage, slackOAuthToken);		
 		}
 	});
 

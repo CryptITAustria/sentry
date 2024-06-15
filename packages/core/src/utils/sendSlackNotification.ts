@@ -11,6 +11,8 @@ export const sendSlackNotification = async (webhookUrl: string, message: string,
         console.log(`Failed message: ${message}`);    
     }
 
+    let stringifiedMessage = typeof message !== 'string' ? JSON.stringify(message) : message;
+
     const headers = {
         'Authorization': `Bearer ${oAuthToken}`,
         'Content-Type': 'application/json'
@@ -19,7 +21,7 @@ export const sendSlackNotification = async (webhookUrl: string, message: string,
     try {
 
     const response = await axios.post(webhookUrl, {
-        text: message
+        text: stringifiedMessage
     }, { headers });
 
     if (response.status !== 200) {

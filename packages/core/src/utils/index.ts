@@ -11,4 +11,4 @@ export * from "./verifyPrivateKey.js";
 export * from "./version.js";
 export * from "./retry.js";
 export * from "./resilientEventListener.js";
-export * from "./slack/index.js";
+export * from "./sendSlackNotification.js";
