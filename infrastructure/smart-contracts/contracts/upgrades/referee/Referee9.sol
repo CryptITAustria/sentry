@@ -1125,6 +1125,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
             require(newPercentage > _newPercentages[i-1], "51"); // Ensure the new percentage is higher than the previous one
 
             // Activate the new tier settings now if applicable
+            // Note this was chosen over calling _setRewardTierThresholds after the for loop to prevent iterating the loop twice
             if (activateNow) {
                 uint256 newThreshold = (getCombinedTotalSupply() * stakeTierPercentages[i]) / 10000;
                 stakeAmountTierThresholds[i] = newThreshold;
