@@ -5,6 +5,10 @@ export const sendSlackNotification = async (webhookUrl: string, message: string,
         throw new Error('SLACK_WEBHOOK_URL is not defined');
     }
 
+    if (!oAuthToken) {
+        throw new Error('SLACK_OAUTH_TOKEN is not defined');
+    }
+
     const headers = {
         'Authorization': `Bearer ${oAuthToken}`,
         'Content-Type': 'application/json'
