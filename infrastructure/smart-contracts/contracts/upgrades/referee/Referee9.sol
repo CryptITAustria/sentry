@@ -1080,7 +1080,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
 
     /**
      * @notice Executes a halving event.
-     * @param totalSupply The current total supply of XAI.
+     * @param totalSupply The current combined total supply of XAI and esXAI.
     */
     function _executeHalving(uint256 totalSupply) private {
         uint256 maxSupply = Xai(xaiAddress).MAX_SUPPLY();
@@ -1093,7 +1093,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     
     /**
      * @notice Executes a reverse halving event.
-     * @param totalSupply The current total supply of XAI.
+     * @param totalSupply The current combined total supply of XAI and esXAI.
     */
     function _executeReverseHalving(uint256 totalSupply) private {
         uint256 diff = halvingThreshold - reverseHalvingThreshold;
