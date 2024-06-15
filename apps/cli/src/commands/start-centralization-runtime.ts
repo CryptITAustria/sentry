@@ -25,11 +25,11 @@ export function startCentralizationRuntime(cli: Vorpal) {
                 optional: false
             }];
 
-            const { mongoUri, slackWebhookUrl, slackOAuthToken } = await this.prompt(prompts);
+            const { mongoUri, slackWebHookUrl, slackOAuthToken } = await this.prompt(prompts);
 
             const commandInstance = this;
 
-            const stopRuntime = await dataCentralizationRuntime({ mongoUri, slackWebhookUrl, slackOAuthToken, logFunction: (log: string) => commandInstance.log(log) });
+            const stopRuntime = await dataCentralizationRuntime({ mongoUri, slackWebHookUrl, slackOAuthToken, logFunction: (log: string) => commandInstance.log(log) });
 
             // Listen for process termination and call the handler
             process.on('SIGINT', async () => {
