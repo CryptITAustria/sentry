@@ -1065,9 +1065,9 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
      * @notice Checks to see if a halving event is required.
     */
     function _checkHalving() private {
-        uint256 maxSupply = Xai(xaiAddress).MAX_SUPPLY();
         uint256 totalSupply = getCombinedTotalSupply();
         if (totalSupply >= halvingThreshold) {
+            uint256 maxSupply = Xai(xaiAddress).MAX_SUPPLY();
             _executeHalving(maxSupply, totalSupply);
         }else if (totalSupply < reverseHalvingThreshold){
             _executeReverseHalving(totalSupply);
