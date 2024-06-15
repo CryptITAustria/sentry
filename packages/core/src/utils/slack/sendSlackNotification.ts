@@ -2,11 +2,13 @@ import axios from "axios";
 
 export const sendSlackNotification = async (webhookUrl: string, message: string, oAuthToken: string): Promise<void> => {
     if (!webhookUrl) {
-        throw new Error('SLACK_WEBHOOK_URL is not defined');
+        console.log(`Failed to send slack notification, missing webhook url.`);
+        console.log(`Failed message: ${message}`);   
     }
 
     if (!oAuthToken) {
-        throw new Error('SLACK_OAUTH_TOKEN is not defined');
+        console.log(`Failed to send slack notification, missing oAuth token.`);
+        console.log(`Failed message: ${message}`);    
     }
 
     const headers = {
@@ -14,11 +16,19 @@ export const sendSlackNotification = async (webhookUrl: string, message: string,
         'Content-Type': 'application/json'
     };
 
+    try {
+
     const response = await axios.post(webhookUrl, {
         text: message
     }, { headers });
 
     if (response.status !== 200) {
-        throw new Error(`Failed to send slack notification: ${response.status}`);
+        console.log(`Failed to send slack notification webhook: ${webhookUrl}`);
+        console.log(`Failed to send slack notification message: ${message}`);   
+    }
+        
+    } catch (error) {
+        console.error(`Failed to send slack notification webhook: ${webhookUrl}`);
+        console.error(`Failed to send slack notification message: ${message}`);        
     }
 }
