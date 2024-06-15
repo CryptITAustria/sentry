@@ -113,10 +113,22 @@ export async function dataCentralizationRuntime({
 			};
 		});
 
+		const startRewardRateTimestamp = new Date().getTime();
+		const startRewardRatesMessage = `Started getting reward rates @ ${new Date(startRewardRateTimestamp).toISOString()}`;
+		sendPoolChallengeNotification(startRewardRatesMessage);
+		
 		const updatedPools = await getRewardRatesFromGraph([]);
 
-		for (const updatedPool of updatedPools) {
+		const endRewardRateTimestamp = new Date().getTime();
+		const durationRewardRates = endRewardRateTimestamp - startRewardRateTimestamp;
+		const endRewardRatesMessage = `Finished getting reward rates @ ${new Date(endRewardRateTimestamp).toISOString()} taking ${Math.floor(durationRewardRates/1000)} seconds.`;
+		sendPoolChallengeNotification(endRewardRatesMessage);
 
+		const startUpdateTimestamp = new Date().getTime();
+		const startUpdateMessage = `Started updating MongoDb @ ${new Date(startUpdateTimestamp).toISOString()}`;
+		sendPoolChallengeNotification(startUpdateMessage);
+
+		for (const updatedPool of updatedPools) {
 			if (!mappedPools[updatedPool.poolAddress] ||
 				mappedPools[updatedPool.poolAddress].esXaiRewardRate == undefined || 
 				mappedPools[updatedPool.poolAddress].esXaiRewardRate != updatedPool.averageDailyRewardPerEsXai || 
@@ -134,6 +146,11 @@ export async function dataCentralizationRuntime({
 				);
 			}
 		}
+
+		const endUpdateTimestamp = new Date().getTime();
+		const durationUpdate = endUpdateTimestamp - startUpdateTimestamp;
+		const endUpdateMessage = `Finished updating MongoDb @ ${new Date(endUpdateTimestamp).toISOString()} taking ${Math.floor(durationUpdate/1000)} seconds.`;
+		sendPoolChallengeNotification(endUpdateMessage);
 
 		const endTime = new Date().toISOString();
 		const duration = new Date(endTime).getTime() - new Date(startTime).getTime();
