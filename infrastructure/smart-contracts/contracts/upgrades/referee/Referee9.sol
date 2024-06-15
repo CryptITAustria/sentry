@@ -1066,9 +1066,8 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     */
     function _checkHalving() private {
         uint256 totalSupply = getCombinedTotalSupply();
-        if (totalSupply >= halvingThreshold) {
-            uint256 maxSupply = Xai(xaiAddress).MAX_SUPPLY();
-            _executeHalving(maxSupply, totalSupply);
+        if (totalSupply >= halvingThreshold) {            
+            _executeHalving(totalSupply);
         }else if (totalSupply < reverseHalvingThreshold){
             _executeReverseHalving(totalSupply);
         }
@@ -1076,10 +1075,10 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
 
     /**
      * @notice Executes a halving event.
-        * @param maxSupply The maximum supply of XAI.
         * @param totalSupply The current total supply of XAI.
     */
-    function _executeHalving(uint256 maxSupply, uint256 totalSupply) private {
+    function _executeHalving(uint256 totalSupply) private {
+        uint256 maxSupply = Xai(xaiAddress).MAX_SUPPLY();
         reverseHalvingThreshold = halvingThreshold;
         uint256 supplyToNextHalving = (maxSupply - halvingThreshold)/2;
         halvingThreshold = halvingThreshold + supplyToNextHalving;
