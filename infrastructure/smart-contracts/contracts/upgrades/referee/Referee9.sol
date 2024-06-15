@@ -151,7 +151,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     // Mapping for amount of assigned keys of a user
     mapping(address => uint256) public assignedKeysOfUserCount;
 
-    //TODO - review added variables
+    //TODO - review added variables and review if uint256 can be reduced
     // Minimum percentages of total supply for each staking tier in basis points
     // 1% = 100 basis points
     uint256[] public stakeTierPercentages;
@@ -224,7 +224,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     event ReverseHalvingEvent(uint256 triggeredChallenge, uint256 totalSupply, uint256 nextHalvingThreshold);
     event StakingTierSet(uint256 indexed tier, uint256 threshold, uint256 boostFactor);
 
-    //TODO what is reinitializer(6)? need to be incremented?
+    //TODO does reinitializer(6) need to be incremented?
     function initialize() public reinitializer(6) {
         //TODO - review initializer
         // Set Initial Tier Percentages
@@ -947,7 +947,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     //TODO review new setter
     /**
      * @dev Admin update the staking tier threshold percentages and the corresponding reward chance boosts.
-     * @notice This function should be used in lieu of the addStakingTier and removeStakingTier functions to ensure
+     * @notice This function should be used in lieu of the addStakingTier, updateStakingTier and removeStakingTier functions to ensure
      * array sizes match, and data is validated including variable values and variable order.
      * @param newPercentages The new percentages of the tiers. Should be in basis points in ascending order. 1% = 100 basis points.
      * @param newBoostFactors The new boost factors for the tiers. Should be in ascending order.
@@ -1104,10 +1104,10 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     }
 
     /**
-     * @notice Updates the staking tier percentages, boost factors and reward tier staking thresholds.
+     * @notice Updates the staking tier percentages, boost factors and (reward tier staking thresholds if activateNow is true).
      * @dev This function should only be called internally from function(s) with Admin rights or the initializer.
      * @param _newPercentages The new percentages of the tiers. Should be in basis points in ascending order. 1% = 100 basis points.
-     * @param _newBoostFactors The new boost factors for the tiers. Should be in ascending order.
+     * @param _newBoostFactors The new boost factors for the tiers. Should be in ascending order. *Must be same length as _newPercentages*
      * @param activateNow A boolean to determine if the new settings should be activated immediately or at next halving event.     
     */
     function _updateRewardTierPercentages(uint256[] memory _newPercentages, uint256[] memory _newBoostFactors, bool activateNow) private {
@@ -1120,7 +1120,8 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
             uint256 newPercentage = _newPercentages[i];            
             require(boostFactor > 0 && boostFactor <= 10000, "33");
             require(boostFactor > _newBoostFactors[i-1], "33"); // Ensure the new boost factor is higher than the previous one
-            require(newPercentage > 0 && newPercentage <=10000, "51"); // TODO confirm the max allowed percentage
+            //TODO check if there will ever be a need for a tier with 0 percentage 
+            require(newPercentage > 0 && newPercentage <=10000, "51"); // TODO confirm the max percentage that should be allowed
             require(newPercentage > _newPercentages[i-1], "51"); // Ensure the new percentage is higher than the previous one
 
             // Activate the new tier settings now if applicable
@@ -1139,8 +1140,6 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     */
     function _setRewardTierThresholds() private {        
         for (uint256 i = 0; i < stakeTierPercentages.length; i++) {
-            uint256 percentage = stakeTierPercentages[i];
-            require(percentage > 0, "51"); //TODO check if there will ever be a need for a tier with 0 percentage
             uint256 newThreshold = (getCombinedTotalSupply() * stakeTierPercentages[i]) / 10000;
             stakeAmountTierThresholds[i] = newThreshold;
             stakeAmountBoostFactors[i] = stagedTierBoostFactors[i];
