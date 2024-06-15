@@ -1093,7 +1093,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     */
     function _executeReverseHalving(uint256 totalSupply) private {
         halvingThreshold = reverseHalvingThreshold;
-        //TODO Revisit this math, as I don't belive this is currently correct
+        //TODO Revisit this math, as I don't believe this is currently correct
         reverseHalvingThreshold = reverseHalvingThreshold / 2;
         _setRewardTierThresholds();
         emit ReverseHalvingEvent(challengeCounter, totalSupply, halvingThreshold);
