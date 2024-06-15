@@ -1,12 +1,12 @@
 import axios from "axios";
 
 export const sendSlackNotification = async (webhookUrl: string, message: string, oAuthToken: string): Promise<void> => {
-    if (!webhookUrl) {
+    if (!webhookUrl || webhookUrl.length === 0) {
         console.log(`Failed to send slack notification, missing webhook url.`);
         console.log(`Failed message: ${message}`);   
     }
 
-    if (!oAuthToken) {
+    if (!oAuthToken || oAuthToken.length === 0) {
         console.log(`Failed to send slack notification, missing oAuth token.`);
         console.log(`Failed message: ${message}`);    
     }
