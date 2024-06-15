@@ -63,6 +63,7 @@ import "../../staking-v2/PoolFactory.sol";
 // 48: Not owner of key.
 // 49: Maximum staking amount exceeded.
 // 50: Invalid amount.
+// 51: Invalid stake rewards tier percentage.
 
 contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
@@ -228,9 +229,9 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
         //TODO - review initializer
         // Set Initial Tier Percentages
         uint256[] memory _initTierPercentageThresholds = new uint256[](4);
-        _initTierPercentageThresholds[0] = 100; // Get these percentages from management
-        _initTierPercentageThresholds[1] = 300; // Get these percentages from management
-        _initTierPercentageThresholds[2] = 500; // Get these percentages from management
+        _initTierPercentageThresholds[0] = 100;  // Get these percentages from management
+        _initTierPercentageThresholds[1] = 300;  // Get these percentages from management
+        _initTierPercentageThresholds[2] = 500;  // Get these percentages from management
         _initTierPercentageThresholds[3] = 1000; // Get these percentages from management
 
         // Set Initial Boost Factors
@@ -1114,11 +1115,12 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
         for (uint256 i = 0; i < _newPercentages.length; i++) {
             uint256 boostFactor = _newBoostFactors[i];
             uint256 newPercentage = _newPercentages[i];            
-            require(boostFactor > 0 && boostFactor <= 10000, "38");
-            require(newPercentage > 0 && newPercentage <=10000, "50"); // TODO confirm the max allowed percentage
-            require(newPercentage > _newPercentages[i-1], "50"); // Ensure the new percentage is higher than the previous one       
+            require(boostFactor > 0 && boostFactor <= 10000, "33");
+            require(boostFactor > _newBoostFactors[i-1], "33"); // Ensure the new boost factor is higher than the previous one
+            require(newPercentage > 0 && newPercentage <=10000, "51"); // TODO confirm the max allowed percentage
+            require(newPercentage > _newPercentages[i-1], "51"); // Ensure the new percentage is higher than the previous one
 
-            // Active the new tier settings now if required
+            // Active the new tier settings now if applicable
             if (activateNow) {
                 uint256 newThreshold = (getCombinedTotalSupply() * stakeTierPercentages[i]) / 10000;
                 stakeAmountTierThresholds[i] = newThreshold;
@@ -1135,7 +1137,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     function _setRewardTierThresholds() private {        
         for (uint256 i = 0; i < stakeTierPercentages.length; i++) {
             uint256 percentage = stakeTierPercentages[i];
-            require(percentage > 0, "50"); //TODO check if there will ever be a need for a tier with 0 percentage
+            require(percentage > 0, "51"); //TODO check if there will ever be a need for a tier with 0 percentage
             uint256 newThreshold = (getCombinedTotalSupply() * stakeTierPercentages[i]) / 10000;
             stakeAmountTierThresholds[i] = newThreshold;
             stakeAmountBoostFactors[i] = stagedTierBoostFactors[i];
