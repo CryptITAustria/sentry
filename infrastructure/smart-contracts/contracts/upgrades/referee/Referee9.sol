@@ -212,7 +212,7 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     event InvalidSubmission(uint256 indexed challengeId, uint256 nodeLicenseId);
     event InvalidBatchSubmission(uint256 indexed challengeId, address operator, uint256 keysLength);
     
-    // TODO Talk to Chris about adding additional field(s) in the next two events for claiming node license Id?
+    // TODO Talk to Chris about adding additional field(s) in the next two events for claiming node license Id? or pool id?
     // to allow reward totals to be incremented in the db allowing and reward rate calculations to 
     // easily be queried and updated in the db using Mongo Triggers vs calculated in the Graph upon each challenge?
 
