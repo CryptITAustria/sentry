@@ -1103,7 +1103,8 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
      * @notice Updates the staking tier percentages, boost factors and reward tier staking thresholds.
      * @dev This function is only called internally from function(s) with Admin rights or the initializer.
      * @param _newPercentages The new percentages of the tiers.
-     * @param _newBoostFactors The new boost factors for the tiers.     
+     * @param _newBoostFactors The new boost factors for the tiers.
+     * @param activateNow A boolean to determine if the new settings should be activated immediately.     
     */
     function _updateRewardTierPercentages(uint256[] memory _newPercentages, uint256[] memory _newBoostFactors, bool activateNow) private {
         require(_newPercentages.length == _newBoostFactors.length, "37");
