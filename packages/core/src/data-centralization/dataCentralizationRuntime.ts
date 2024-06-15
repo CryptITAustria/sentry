@@ -95,6 +95,7 @@ export async function dataCentralizationRuntime({
 	}).stop;
 
 	const closeChallengeListener = listenForChallenges(async (challengeNumber: bigint, challenge: Challenge, event?: any) => {
+		try {
 		const PoolModel = mongoose.models.Pool || mongoose.model<IPool>('Pool', PoolSchema);
 		const startTime = new Date().toISOString();
 
@@ -139,6 +140,14 @@ export async function dataCentralizationRuntime({
 		const duration = new Date(endTime).getTime() - new Date(startTime).getTime();
 		const slackEndMessage = `Updated ${pools.length} pools. Started @ ${startTime} and ended @ ${endTime} taking ${Math.floor(duration/1000)} seconds.`;
 		sendSlackNotification(poolChallengeWebhookUrl, slackEndMessage, poolChallengeSlackOAuthToken);
+			
+		} catch (error) {
+			const errorTime = new Date().toISOString();
+			const errorMesssage = `Error updating pools: ${JSON.stringify(error)} @ ${errorTime}`;
+			const poolChallengeWebhookUrl = process.env.POOL_CHALLENGE_SLACK_WEBHOOK_URL || '';
+			const poolChallengeSlackOAuthToken = process.env.POOL_CHALLENGE_SLACK_OAUTH_TOKEN || '';
+			sendSlackNotification(poolChallengeWebhookUrl, errorMesssage, poolChallengeSlackOAuthToken);			
+		}
 	});
 
 	/**
