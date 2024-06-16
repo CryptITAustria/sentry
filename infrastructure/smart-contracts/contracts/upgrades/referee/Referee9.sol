@@ -1116,10 +1116,9 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
      * @param activateNow A boolean to determine if the new settings should be activated immediately or at next halving event.     
     */
     function _updateRewardTierPercentages(uint256[] memory _newPercentages, uint256[] memory _newBoostFactors, bool activateNow) private {
+        require(_newPercentages.length > 0, "39");
         require(_newPercentages.length == _newBoostFactors.length, "37");
-        stagedTierBoostFactors = _newBoostFactors;
-        stakeTierPercentages = _newPercentages;
-        
+
         for (uint256 i = 0; i < _newPercentages.length; i++) {
             uint256 boostFactor = _newBoostFactors[i];
             uint256 newPercentage = _newPercentages[i];            
@@ -1132,12 +1131,15 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
             // Activate the new tier settings now if applicable
             // Note this was chosen over calling _setRewardTierThresholds after the for loop to prevent iterating the loop twice
             if (activateNow) {
-                uint256 newThreshold = (getCombinedTotalSupply() * stakeTierPercentages[i]) / 10000;
+                uint256 newThreshold = (getCombinedTotalSupply() * newPercentage) / 10000;
                 stakeAmountTierThresholds[i] = newThreshold;
                 stakeAmountBoostFactors[i] = boostFactor;
                 emit StakingTierSet(i, newThreshold, boostFactor);
             }
         }
+
+        stagedTierBoostFactors = _newBoostFactors;
+        stakeTierPercentages = _newPercentages;        
     }
 
     /**
