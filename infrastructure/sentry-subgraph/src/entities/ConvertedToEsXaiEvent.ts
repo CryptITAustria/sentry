@@ -1,9 +1,9 @@
-import { Entity, store, Value, ValueKind, BigInt, Bytes } from "@graphprotocol/graph-ts";
+import { Entity, store, Value, ValueKind, Bytes, BigInt } from "@graphprotocol/graph-ts";
 
 export class ConvertedToEsXaiEvent extends Entity {
-  constructor(id: string) {
+  constructor(id: Bytes) {
     super();
-    this.set("id", Value.fromString(id));
+    this.set("id", Value.fromBytes(id));
   }
 
   save(): void {
@@ -11,25 +11,25 @@ export class ConvertedToEsXaiEvent extends Entity {
     assert(id != null, "Cannot save ConvertedToEsXaiEvent entity without an ID");
     if (id) {
       assert(
-        id.kind == ValueKind.STRING,
-        "Cannot save ConvertedToEsXaiEvent entity with non-string ID. " +
+        id.kind == ValueKind.BYTES,
+        "Cannot save ConvertedToEsXaiEvent entity with non-bytes ID. " +
           'Considering using .toHex() to convert the "id" to a string.'
       );
-      store.set("ConvertedToEsXaiEvent", id.toString(), this);
+      store.set("ConvertedToEsXaiEvent", id.toBytes().toHex(), this);
     }
   }
 
-  static load(id: string): ConvertedToEsXaiEvent | null {
-    return store.get("ConvertedToEsXaiEvent", id) as ConvertedToEsXaiEvent | null;
+  static load(id: Bytes): ConvertedToEsXaiEvent | null {
+    return store.get("ConvertedToEsXaiEvent", id.toHex()) as ConvertedToEsXaiEvent | null;
   }
 
-  get id(): string {
+  get id(): Bytes {
     const value = this.get("id");
-    return value!.toString();
+    return value!.toBytes();
   }
 
-  set id(value: string) {
-    this.set("id", Value.fromString(value));
+  set id(value: Bytes) {
+    this.set("id", Value.fromBytes(value));
   }
 
   get user(): Bytes {

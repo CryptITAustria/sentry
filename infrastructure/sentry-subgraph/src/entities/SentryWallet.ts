@@ -111,4 +111,21 @@ export class SentryWallet extends Entity {
       this.set("sentryKeys", Value.fromStringArray(<Array<string>>value));
     }
   }
+
+  get submissions(): Array<string> | null {
+    const value = this.get("submissions");
+    if (!value || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toStringArray();
+    }
+  }
+
+  set submissions(value: Array<string> | null) {
+    if (!value) {
+      this.unset("submissions");
+    } else {
+      this.set("submissions", Value.fromStringArray(<Array<string>>value));
+    }
+  }
 }

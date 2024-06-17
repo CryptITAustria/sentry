@@ -174,4 +174,21 @@ export class Challenge extends Entity {
       this.set("submissions", Value.fromStringArray(<Array<string>>value));
     }
   }
+
+  get poolChallenges(): Array<string> | null {
+    const value = this.get("poolChallenges");
+    if (!value || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toStringArray();
+    }
+  }
+
+  set poolChallenges(value: Array<string> | null) {
+    if (!value) {
+      this.unset("poolChallenges");
+    } else {
+      this.set("poolChallenges", Value.fromStringArray(<Array<string>>value));
+    }
+  }
 }

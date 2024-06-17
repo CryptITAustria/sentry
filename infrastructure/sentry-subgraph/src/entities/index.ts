@@ -5,3 +5,5 @@ export { Submission } from "./Submission";
 export { SentryWallet } from "./SentryWallet";
 export { RefereeConfig } from "./RefereeConfig";
 export { ConvertedToEsXaiEvent } from "./ConvertedToEsXaiEvent";
+export { PoolChallenge } from "./PoolChallenge";
+export {UnstakeRequest} from "./UnstakeRequest";

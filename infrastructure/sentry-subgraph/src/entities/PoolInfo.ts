@@ -158,13 +158,13 @@ export class PoolInfo extends Entity {
     this.set("ownerRequestedUnstakeKeyAmount", Value.fromBigInt(value));
   }
 
-  get ownerLatestUnstakeRequestCompconstionTime(): BigInt {
-    const value = this.get("ownerLatestUnstakeRequestCompconstionTime");
+  get ownerLatestUnstakeRequestCompletionTime(): BigInt {
+    const value = this.get("ownerLatestUnstakeRequestCompletionTime");
     return value!.toBigInt();
   }
 
-  set ownerLatestUnstakeRequestCompconstionTime(value: BigInt) {
-    this.set("ownerLatestUnstakeRequestCompconstionTime", Value.fromBigInt(value));
+  set ownerLatestUnstakeRequestCompletionTime(value: BigInt) {
+    this.set("ownerLatestUnstakeRequestCompletionTime", Value.fromBigInt(value));
   }
 
   get createdTimestamp(): BigInt {
@@ -174,5 +174,22 @@ export class PoolInfo extends Entity {
 
   set createdTimestamp(value: BigInt) {
     this.set("createdTimestamp", Value.fromBigInt(value));
+  }
+
+  get poolChallenges(): Array<string> | null {
+    const value = this.get("poolChallenges");
+    if (!value || value.kind == ValueKind.NULL) {
+      return null;
+    } else {
+      return value.toStringArray();
+    }
+  }
+
+  set poolChallenges(value: Array<string> | null) {
+    if (!value) {
+      this.unset("poolChallenges");
+    } else {
+      this.set("poolChallenges", Value.fromStringArray(<Array<string>>value));
+    }
   }
 }

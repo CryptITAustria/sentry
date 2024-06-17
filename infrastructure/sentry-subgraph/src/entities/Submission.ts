@@ -140,6 +140,15 @@ export class Submission extends Entity {
     this.set("challenge", Value.fromString(value));
   }
 
+  get sentryWallet(): string {
+    const value = this.get("sentryWallet");
+    return value!.toString();
+  }
+
+  set sentryWallet(value: string) {
+    this.set("sentryWallet", Value.fromString(value));
+  }
+
   get submittedFrom(): string {
     const value = this.get("submittedFrom");
     return value!.toString();
