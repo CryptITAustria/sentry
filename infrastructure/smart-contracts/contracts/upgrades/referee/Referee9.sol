@@ -1118,6 +1118,8 @@ contract Referee9 is Initializable, AccessControlEnumerableUpgradeable {
     function _updateRewardTierPercentages(uint256[] memory _newPercentages, uint256[] memory _newBoostFactors, bool activateNow) private {
         require(_newPercentages.length > 0, "39");
         require(_newPercentages.length == _newBoostFactors.length, "37");
+        // TODO confirm if the array should be a fixed minimum length or if it should be allowed to be dynamic
+        // I believe it should be a fixed minimum to be compatible with the staking tier thresholds calculation
 
         for (uint256 i = 0; i < _newPercentages.length; i++) {
             uint256 boostFactor = _newBoostFactors[i];
