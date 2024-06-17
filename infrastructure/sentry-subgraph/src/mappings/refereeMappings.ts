@@ -115,6 +115,7 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   submission.claimAmount = BigInt.fromI32(0)
   submission.sentryKey = event.params.nodeLicenseId.toString()
   submission.challenge = challenge.id
+  submission.sentryWallet = sentryKey.sentryWallet
 
   submission.createdTimestamp = event.block.timestamp
   submission.createdTxHash = event.transaction.hash

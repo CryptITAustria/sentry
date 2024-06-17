@@ -28,15 +28,13 @@ enum ChallengeStatus {
   Expired
 }
 
-type Challenge
-  @entity(immutable: false)
-  @index(fields: ["assertionTimestamp"]) {
+type Challenge @entity(immutable: false) {
   id: String!
   challengeNumber: BigInt! # uint256
   status: ChallengeStatus!
   assertionId: BigInt! # uint256
   assertionStateRootOrConfirmData: Bytes! # bytes
-  assertionTimestamp: BigInt! # uint64
+  assertionTimestamp: BigInt! @index # uint64
   challengerSignedHash: Bytes! # bytes
   activeChallengerPublicKey: Bytes! # bytes
   rollupUsed: Bytes! # address
@@ -47,7 +45,7 @@ type Challenge
   numberOfEligibleClaimers: BigInt! # uint256
   amountClaimedByClaimers: BigInt! # uint256
   submissions: [Submission!]! @derivedFrom(field: "challenge")
-  pool: PoolInfo! @derivedFrom(field: "poolChallenges")
+  poolChallenges: [PoolChallenge!]! @derivedFrom(field: "challenge")
 }
 
 
@@ -61,6 +59,20 @@ type ConvertedToEsXaiEvent @entity(immutable: true) {
   user: Bytes! # address
   amount: BigInt!
   timestamp: BigInt!
+}
+
+
+##################################################################################
+# PoolChallenge.graphql                                                          #
+# src/schema/events/PoolChallenge.graphql                                        #
+##################################################################################
+type PoolChallenge @entity(immutable: false) {
+  id: String!
+  challenge: Challenge! @index
+  pool: PoolInfo! @index
+  totalClaimedEsXaiAmount: BigInt!
+  totalStakedEsXaiAmount: BigInt!
+  totalStakedKeyAmount: BigInt!
 }
 
 
@@ -104,7 +116,7 @@ type PoolInfo
   ownerRequestedUnstakeKeyAmount: BigInt!
   ownerLatestUnstakeRequestCompletionTime: BigInt!
   createdTimestamp: BigInt!
-  poolChallenges: [Challenge!]! @derivedFrom(field: "pool")
+  poolChallenges: [PoolChallenge!]! @derivedFrom(field: "pool")
 }
 
 
@@ -202,8 +214,8 @@ type Submission @entity(immutable: false) {
 # src/schema/events/UnstakeRequest.graphql
 type UnstakeRequest @entity(immutable: false) {
   id: String!
-  user: Bytes!
-  pool: Bytes!
+  user: Bytes! @index
+  pool: Bytes! @index
   index: BigInt!
   amount: BigInt!
   isKey: Boolean!
