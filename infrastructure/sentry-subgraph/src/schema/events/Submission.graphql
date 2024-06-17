@@ -1,0 +1,30 @@
+# src/schema/events/Submission.graphql
+enum SubmittedFrom {
+  submitAssertion
+  submitMultipleAssertions
+  unknown
+}
+
+enum ClaimedFrom {
+  claimRewards
+  claimMultipleRewards
+  unclaimed
+}
+
+type Submission @entity(immutable: false) {
+  id: String!
+  challengeNumber: BigInt!
+  claimed: Boolean!
+  eligibleForPayout: Boolean!
+  nodeLicenseId: BigInt! #TODO see if this can be removed sicne it can be found under sentryKey
+  assertionsStateRootOrConfirmData: String!
+  claimAmount: BigInt!
+  createdTimestamp: BigInt!
+  claimTimestamp: BigInt!
+  createdTxHash: Bytes!
+  claimTxHash: Bytes!
+  sentryKey: SentryKey!
+  challenge: Challenge!
+  submittedFrom: SubmittedFrom!
+  claimedFrom: ClaimedFrom!
+}

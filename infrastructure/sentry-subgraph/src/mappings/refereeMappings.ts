@@ -11,7 +11,7 @@ import {
   Initialized,
   StakedV1,
   UnstakeV1
-} from "../generated/Referee/Referee"
+} from "../../generated/Referee/Referee"
 import {
   Challenge,
   SentryWallet,
@@ -19,13 +19,13 @@ import {
   SentryKey,
   RefereeConfig,
   PoolInfo
-} from "../generated/schema"
-import { checkIfSubmissionEligible } from "./utils/checkIfSubmissionEligible"
-import { getBoostFactor } from "./utils/getBoostFactor"
-import { getInputFromEvent } from "./utils/getInputFromEvent"
-import { getMaxStakeAmount } from "./utils/getMaxStakeAmount"
-import { getTxSignatureFromEvent } from "./utils/getTxSignatureFromEvent"
-import { updateChallenge } from "./utils/updateChallenge"
+} from "../../generated/schema"
+import { checkIfSubmissionEligible } from "../utils/checkIfSubmissionEligible"
+import { getBoostFactor } from "../utils/getBoostFactor"
+import { getInputFromEvent } from "../utils/getInputFromEvent"
+import { getMaxStakeAmount } from "../utils/getMaxStakeAmount"
+import { getTxSignatureFromEvent } from "../utils/getTxSignatureFromEvent"
+import { updateChallenge } from "../utils/updateChallenge"
 
 import { ethereum, BigInt, Bytes, Address, log } from "@graphprotocol/graph-ts"
 
@@ -85,13 +85,13 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
     return;
   }
 
-  let sentryWallet = SentryWallet.load(sentryKey.sentryWallet)
+  const sentryWallet = SentryWallet.load(sentryKey.sentryWallet)
   if (!sentryWallet) {
     log.warning("Failed to find sentryWallet handleAssertionSubmitted: keyID: " + event.params.nodeLicenseId.toString() + ", TX: " + event.transaction.hash.toHexString(), [])
     return;
   }
 
-  let refereeConfig = RefereeConfig.load("RefereeConfig")
+  const refereeConfig = RefereeConfig.load("RefereeConfig")
   if (!refereeConfig) {
     log.warning("Failed to find refereeConfig handleAssertionSubmitted TX: " + event.transaction.hash.toHexString(), [])
     return;
@@ -108,7 +108,7 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
     submittedFrom = "submitMultipleAssertions"
   }
 
-  let submission = new Submission(event.params.challengeId.toString() + "_" + event.params.nodeLicenseId.toString())
+  const submission = new Submission(event.params.challengeId.toString() + "_" + event.params.nodeLicenseId.toString())
   submission.nodeLicenseId = event.params.nodeLicenseId
   submission.challengeNumber = event.params.challengeId
   submission.claimed = false
@@ -213,7 +213,7 @@ export function handleChallengeSubmitted(event: ChallengeSubmittedEvent): void {
 
 export function handleRewardsClaimed(event: RewardsClaimedEvent): void {
   // query for the challenge and update it
-  let challenge = Challenge.load(event.params.challengeId.toString())
+  const challenge = Challenge.load(event.params.challengeId.toString())
 
   if (!challenge) {
     log.warning("Failed to find challenge handleRewardsClaimed challengeId: " + event.params.challengeId.toString() + ", TX: " + event.transaction.hash.toHexString(), [])
@@ -424,7 +424,7 @@ export function handleApproval(event: ApprovalEvent): void {
 }
 
 export function handleStakedV1(event: StakedV1): void {
-  let sentryWallet = SentryWallet.load(event.params.user.toHexString())
+  const sentryWallet = SentryWallet.load(event.params.user.toHexString())
   if (!sentryWallet) {
     log.warning("Failed to find sentryWallet handleStakedV1 TX: " + event.transaction.hash.toHexString(), [])
     return
@@ -434,7 +434,7 @@ export function handleStakedV1(event: StakedV1): void {
 }
 
 export function handleUnstakeV1(event: UnstakeV1): void {
-  let sentryWallet = SentryWallet.load(event.params.user.toHexString())
+  const sentryWallet = SentryWallet.load(event.params.user.toHexString())
   if (!sentryWallet) {
     log.warning("Failed to find sentryWallet handleUnstakeV1 TX: " + event.transaction.hash.toHexString(), [])
     return

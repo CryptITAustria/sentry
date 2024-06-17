@@ -1,0 +1,23 @@
+# src/schema/events/PoolInfo.graphql
+type PoolInfo
+  @entity(immutable: false)
+  @index(fields: ["totalStakedEsXaiAmount"]) {
+  id: String!
+  address: Bytes!
+  owner: Bytes!
+  delegateAddress: Bytes!
+  totalStakedEsXaiAmount: BigInt!
+  totalStakedKeyAmount: BigInt!
+  ownerShare: BigInt!
+  keyBucketShare: BigInt!
+  stakedBucketShare: BigInt!
+  updateSharesTimestamp: BigInt!
+  pendingShares: [BigInt!]!
+  metadata: [String!]!
+  socials: [String!]!
+  ownerStakedKeys: BigInt!
+  ownerRequestedUnstakeKeyAmount: BigInt!
+  ownerLatestUnstakeRequestCompletionTime: BigInt!
+  createdTimestamp: BigInt!
+  poolChallenges: [Challenge!]! @derivedFrom(field: "pool")
+}

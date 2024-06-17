@@ -7,29 +7,32 @@ const path = require('path');
  * @returns {string[]} An array of file paths.
  */
 function readFilesRecursively(dir) {
-	const files = [];
+  const files = [];
 
-	fs.readdirSync(dir, { withFileTypes: true }).forEach(dirent => {
-		const fullPath = path.join(dir, dirent.name);
-		if (dirent.isDirectory()) {
-			files.push(...readFilesRecursively(fullPath));
-		} else {
-			files.push(fullPath);
-		}
-	});
+  fs.readdirSync(dir, { withFileTypes: true }).forEach(dirent => {
+    const fullPath = path.join(dir, dirent.name);
+    if (dirent.isDirectory()) {
+      files.push(...readFilesRecursively(fullPath));
+    } else {
+      files.push(fullPath);
+    }
+  });
 
-	return files;
+  return files;
 }
 
 // Directory containing the schema files, relative to the project root
-const schemaDir = path.relative(process.cwd(), path.join(__dirname, './schema'));
+const schemaDir = path.join(__dirname, 'src', 'schema', 'events');
 
 // Output path for the merged schema, relative to the project root
-const outputPath = path.relative(process.cwd(), path.join(__dirname, './schema.graphql'));
+const outputPath = path.join(__dirname, 'src', 'schema', 'schema.graphql');
+
+console.log(`Schema directory path: ${schemaDir}`);
+console.log(`Output path: ${outputPath}`);
 
 // Check if the output file already exists
-if (fs.existsSync(path.join(process.cwd(), outputPath))) {
-	console.log(`Notice: ${outputPath} already exists and will be overridden.`);
+if (fs.existsSync(outputPath)) {
+  console.log(`Notice: ${outputPath} already exists and will be overridden.`);
 }
 
 console.log('Starting to merge schema files from:', schemaDir);
@@ -52,29 +55,29 @@ let mergedSchema = `
 ################################################################################
 ` + "\n\n\n";
 
-const files = readFilesRecursively(path.join(process.cwd(), schemaDir));
+const files = readFilesRecursively(schemaDir);
 
 files.forEach(filePath => {
-	if (path.extname(filePath) === '.graphql') {
-		const fileContents = fs.readFileSync(filePath, 'utf8');
-		const relativeFilePath = path.relative(process.cwd(), filePath);
-		const fileName = path.basename(filePath);
+  if (path.extname(filePath) === '.graphql') {
+    const fileContents = fs.readFileSync(filePath, 'utf8');
+    const relativeFilePath = path.relative(process.cwd(), filePath);
+    const fileName = path.basename(filePath);
 
-		// Correctly format the comment with the file name and path to form a proper rectangle with minimum length twice as long
-		const maxContentLength = Math.max(fileName.length, relativeFilePath.length) * 2; // Making the minimum length twice as long
-		const headerFooterLength = maxContentLength + 4; // Adding padding spaces
-		const headerFooter = `#`.repeat(headerFooterLength) + `\n`;
-		const formatLine = (line) => `# ${line.padEnd(maxContentLength)} #\n`;
-		const fileComment = 
-			headerFooter +
-			formatLine(fileName) +
-			formatLine(relativeFilePath) +
-			headerFooter;
-		mergedSchema += fileComment + fileContents + '\n\n';
-		console.log(`Merging schema from: ${fileName}`);
-	}
+    // Correctly format the comment with the file name and path to form a proper rectangle with minimum length twice as long
+    const maxContentLength = Math.max(fileName.length, relativeFilePath.length) * 2; // Making the minimum length twice as long
+    const headerFooterLength = maxContentLength + 4; // Adding padding spaces
+    const headerFooter = `#`.repeat(headerFooterLength) + `\n`;
+    const formatLine = (line) => `# ${line.padEnd(maxContentLength)} #\n`;
+    const fileComment = 
+      headerFooter +
+      formatLine(fileName) +
+      formatLine(relativeFilePath) +
+      headerFooter;
+    mergedSchema += fileComment + fileContents + '\n\n';
+    console.log(`Merging schema from: ${fileName}`);
+  }
 });
 
 // Write the merged schema to a file
-fs.writeFileSync(path.join(process.cwd(), outputPath), mergedSchema);
+fs.writeFileSync(outputPath, mergedSchema);
 console.log(`Merged schema written to ${outputPath}`);

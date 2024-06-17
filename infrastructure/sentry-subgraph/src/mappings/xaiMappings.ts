@@ -1,8 +1,8 @@
-import { ConvertedToEsXai } from "../generated/Xai/Xai";
-import { ConvertedToEsXaiEvent } from "../generated/schema";
+import { ConvertedToEsXai } from "../../generated/Xai/Xai";
+import { ConvertedToEsXaiEvent } from "../../generated/schema";
 
 export function handleConvertedToEsXai(event: ConvertedToEsXai): void {
-    let redemption = new ConvertedToEsXaiEvent(
+    const redemption = new ConvertedToEsXaiEvent(
         event.transaction.hash.concatI32(event.logIndex.toI32()),
     );
     redemption.amount = event.params.amount

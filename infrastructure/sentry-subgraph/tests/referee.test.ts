@@ -7,9 +7,8 @@ import {
   afterAll
 } from "matchstick-as/assembly/index"
 import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts"
-import { Approval } from "../generated/schema"
 import { Approval as ApprovalEvent } from "../generated/Referee/Referee"
-import { handleApproval } from "../src/referee"
+import { handleApproval } from "../src/mappings/refereeMappings"
 import { createApprovalEvent } from "./referee-utils"
 
 // Tests structure (matchstick-as >=0.5.0)

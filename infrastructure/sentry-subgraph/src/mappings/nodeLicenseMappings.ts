@@ -1,11 +1,11 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts"
 import {
   Transfer as TransferEvent,
-} from "../generated/NodeLicense/NodeLicense"
+} from "../../generated/NodeLicense/NodeLicense"
 import {
   SentryKey,
   SentryWallet,
-} from "../generated/schema"
+} from "../../generated/schema"
 
 export function handleTransfer(event: TransferEvent): void {
   let sentryWallet = SentryWallet.load(event.params.to.toHexString())

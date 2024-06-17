@@ -2,7 +2,7 @@ specVersion: 1.0.0
 indexerHints:
   prune: auto
 schema:
-  file: ./schema.graphql
+  file: ./src/schema/schema.graphql
 dataSources:
   - kind: ethereum
     name: Referee
@@ -19,13 +19,15 @@ dataSources:
         - Challenge
         - Submission
         - SentryWallet
+        - SentryKey
+        - RefereeConfig
       abis:
         - name: Referee
           file: ./abis/Referee.json
       eventHandlers:
         - event: Initialized(uint8)
           handler: handleInitialized
-        - event: AssertionSubmitted(indexed uint256,indexed uint256)
+        - event: AssertionSubmitted(indexed uint256, indexed uint256)
           handler: handleAssertionSubmitted
         - event: ChallengeClosed(indexed uint256)
           handler: handleChallengeClosed
@@ -33,19 +35,20 @@ dataSources:
           handler: handleChallengeExpired
         - event: ChallengeSubmitted(indexed uint256)
           handler: handleChallengeSubmitted
-        - event: RewardsClaimed(indexed uint256,uint256)
+        - event: RewardsClaimed(indexed uint256, uint256)
           handler: handleRewardsClaimed
-        - event: BatchRewardsClaimed(indexed uint256,uint256,uint256)
+        - event: BatchRewardsClaimed(indexed uint256, uint256, uint256)
           handler: handleBatchRewardsClaimed
-        - event: Approval(indexed address,indexed address,bool)
+        - event: Approval(indexed address, indexed address, bool)
           handler: handleApproval
-        - event: KycStatusChanged(indexed address,bool)
+        - event: KycStatusChanged(indexed address, bool)
           handler: handleKycStatusChanged
-        - event: StakedV1(indexed address,uint256,uint256)
+        - event: StakedV1(indexed address, uint256, uint256)
           handler: handleStakedV1
-        - event: UnstakeV1(indexed address,uint256,uint256)
+        - event: UnstakeV1(indexed address, uint256, uint256)
           handler: handleUnstakeV1
-      file: ./src/referee.ts
+      file: ./src/mappings/refereeMappings.ts
+
   - kind: ethereum
     name: NodeLicense
     network: arbitrum-sepolia
@@ -59,13 +62,15 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - SentryKey
+        - SentryWallet
       abis:
         - name: NodeLicense
           file: ./abis/NodeLicense.json
       eventHandlers:
-        - event: Transfer(indexed address,indexed address,indexed uint256)
+        - event: Transfer(indexed address, indexed address, indexed uint256)
           handler: handleTransfer
-      file: ./src/node-license.ts
+      file: ./src/mappings/nodeLicenseMappings.ts
+
   - kind: ethereum
     name: PoolFactory
     network: arbitrum-sepolia
@@ -79,33 +84,38 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - PoolInfo
+        - PoolFactoryConfig
+        - UnstakeRequest
       abis:
         - name: PoolFactory
           file: ./abis/PoolFactory.json
       eventHandlers:
         - event: Initialized(uint8)
           handler: handleInitialized
-        - event: StakeKeys(indexed address,indexed address,uint256,uint256,uint256)
+        - event: StakeKeys(indexed address, indexed address, uint256, uint256, uint256)
           handler: handleStakeKeys
-        - event: UnstakeKeys(indexed address,indexed address,uint256,uint256,uint256)
+        - event: UnstakeKeys(indexed address, indexed address, uint256, uint256, uint256)
           handler: handleUnstakeKeys
-        - event: PoolCreated(indexed uint256,indexed address,indexed address,uint256)
+        - event: PoolCreated(indexed uint256, indexed address, indexed address, uint256)
           handler: handlePoolCreated
-        - event: UpdatePoolDelegate(indexed address,indexed address)
+        - event: UpdatePoolDelegate(indexed address, indexed address)
           handler: handleUpdatePoolDelegate
-        - event: StakeEsXai(indexed address,indexed address,uint256,uint256,uint256)
+        - event: StakeEsXai(indexed address, indexed address, uint256, uint256, uint256)
           handler: handleStakeEsXai
-        - event: UnstakeEsXai(indexed address,indexed address,uint256,uint256,uint256)
+        - event: UnstakeEsXai(indexed address, indexed address, uint256, uint256, uint256)
           handler: handleUnstakeEsXai
         - event: UpdateMetadata(indexed address)
           handler: handleUpdateMetadata
-        - event: UnstakeRequestStarted(indexed address,indexed address,indexed uint256,uint256,bool)
+        - event: UnstakeRequestStarted(indexed address, indexed address, indexed uint256, uint256, bool)
           handler: handleUnstakeRequest
         - event: UpdateShares(indexed address)
           handler: handleUpdatePendingShares
-        - event: ClaimFromPool(indexed address,indexed address)
+        - event: ClaimFromPool(indexed address, indexed address)
           handler: handleClaimFromPool
-      file: ./src/pool-factory.ts
+        - event: UpdateDelayPeriods()
+          handler: handleUpdateDelayPeriods
+      file: ./src/mappings/poolFactoryMappings.ts
+
   - kind: ethereum
     name: Xai
     network: arbitrum-one
@@ -123,6 +133,6 @@ dataSources:
         - name: Xai
           file: ./abis/Xai.json
       eventHandlers:
-        - event: ConvertedToEsXai(indexed address,uint256)
+        - event: ConvertedToEsXai(indexed address, uint256)
           handler: handleConvertedToEsXai
-      file: ./src/xai.ts
+      file: ./src/mappings/xaiMappings.ts

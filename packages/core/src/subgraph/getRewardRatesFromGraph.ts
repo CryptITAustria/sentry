@@ -9,6 +9,8 @@ type PoolRewardRates = {
 }
 
 const AVERAGE_WINDOW_DAYS = 7n;
+const BATCH_SIZE = 10; // Adjust batch size as necessary
+const DELAY_MS = 100; // Adjust delay as necessary
 
 /**
  * 
@@ -21,36 +23,30 @@ export async function getRewardRatesFromGraph(
 
   const client = new GraphQLClient(config.subgraphEndpoint);
 
-  let queryWhere = "";
-  if (poolAddresses.length !== 0) {
-    queryWhere = `, where: {address_in: [${poolAddresses.map(o => `"${o.toLowerCase()}"`).join(",")}]}`;
-  }
-
   const unixAverageWindowPlus5Mins = Number(AVERAGE_WINDOW_DAYS) * 24 * 60 * 60 * 1000 + 5 * 60 * 1000;
-  const startTimestamp = Math.floor((Date.now() - unixAverageWindowPlus5Mins)/1000);
+  const startTimestamp = Math.floor((Date.now() - unixAverageWindowPlus5Mins) / 1000);
 
   const query = gql`
-    query PoolInfos {
-      poolInfos(first: 10000, orderBy: totalStakedEsXaiAmount, orderDirection: desc${queryWhere}) {
-        poolChallenges(where: {challenge_: {assertionTimestamp_gt: ${startTimestamp}}}) {
+    query PoolInfos($startTimestamp: Int!, $poolAddresses: [String!]) {
+      poolInfos(first: 10000, orderBy: totalStakedEsXaiAmount, orderDirection: desc, where: {address_in: $poolAddresses}) {
+        address
+        keyBucketShare
+        stakedBucketShare
+        poolChallenges(where: {assertionTimestamp_gt: $startTimestamp}) {
           totalClaimedEsXaiAmount
           totalStakedEsXaiAmount
           totalStakedKeyAmount
         }
-        address
-        keyBucketShare
-        stakedBucketShare
       }
     }
-  `
+  `;
 
-  const result = await client.request(query) as any;
+  const result = await client.request(query, { startTimestamp, poolAddresses }) as any;
   const poolInfos: PoolInfo[] = result.poolInfos;
 
   const poolRewardRates: PoolRewardRates[] = [];
 
   for (let index = 0; index < poolInfos.length; index++) {
-
     const poolInfo: PoolInfo = result.poolInfos[index];
 
     const stakedBucketShare = BigInt(poolInfo.stakedBucketShare);
@@ -84,10 +80,9 @@ export async function getRewardRatesFromGraph(
 
     poolRewardRates.push({ poolAddress: poolInfo.address, averageDailyEsXaiReward, averageDailyKeyReward });
 
-    // every 10 pools wait 100 ms to unblock thread
-    // TODO: open new thread
-    if (index % 10 == 0) {
-      await new Promise((resolve) => { setTimeout(resolve, 100) });
+    // every BATCH_SIZE pools wait DELAY_MS to unblock thread
+    if (index % BATCH_SIZE === 0) {
+      await new Promise((resolve) => { setTimeout(resolve, DELAY_MS) });
     }
   }
 

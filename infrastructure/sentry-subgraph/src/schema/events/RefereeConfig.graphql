@@ -1,0 +1,9 @@
+# src/schema/events/RefereeConfig.graphql
+type RefereeConfig @entity(immutable: false) {
+  id: String!
+  version: BigInt!
+  maxStakeAmountPerLicense: BigInt!
+  maxKeysPerPool: BigInt!
+  stakeAmountTierThresholds: [BigInt!]!
+  stakeAmountBoostFactors: [BigInt!]!
+}

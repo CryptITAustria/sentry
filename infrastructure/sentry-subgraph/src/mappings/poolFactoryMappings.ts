@@ -13,16 +13,16 @@ import {
   Initialized,
   UpdateDelayPeriods,
   ClaimFromPool
-} from "../generated/PoolFactory/PoolFactory"
+} from "../../generated/PoolFactory/PoolFactory"
 import {
   SentryKey,
   PoolInfo,
   UnstakeRequest,
   PoolFactoryConfig,
   SentryWallet,
-} from "../generated/schema"
-import { getInputFromEvent } from "./utils/getInputFromEvent";
-import { getTxSignatureFromEvent } from "./utils/getTxSignatureFromEvent";
+} from "../../generated/schema"
+import { getInputFromEvent } from "../utils/getInputFromEvent";
+import { getTxSignatureFromEvent } from "../utils/getTxSignatureFromEvent";
 
 function handlePoolBreakdown(pool: PoolInfo, currentTime: BigInt): void {
   if (pool.updateSharesTimestamp.gt(BigInt.fromI32(0)) && currentTime.gt(pool.updateSharesTimestamp)) {

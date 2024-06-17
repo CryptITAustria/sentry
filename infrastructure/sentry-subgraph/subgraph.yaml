@@ -2,7 +2,7 @@ specVersion: 1.0.0
 indexerHints:
   prune: auto
 schema:
-  file: ./schema.graphql
+  file: ./src/schema/schema.graphql
 dataSources:
   - kind: ethereum
     name: Referee
@@ -19,6 +19,8 @@ dataSources:
         - Challenge
         - Submission
         - SentryWallet
+        - SentryKey
+        - RefereeConfig
       abis:
         - name: Referee
           file: ./abis/Referee.json
@@ -45,7 +47,8 @@ dataSources:
           handler: handleStakedV1
         - event: UnstakeV1(indexed address,uint256,uint256)
           handler: handleUnstakeV1
-      file: ./src/referee.ts
+      file: ./src/mappings/refereeMappings.ts
+
   - kind: ethereum
     name: NodeLicense
     network: arbitrum-one
@@ -59,13 +62,15 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - SentryKey
+        - SentryWallet
       abis:
         - name: NodeLicense
           file: ./abis/NodeLicense.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,indexed uint256)
           handler: handleTransfer
-      file: ./src/node-license.ts
+      file: ./src/mappings/nodeLicenseMappings.ts
+
   - kind: ethereum
     name: PoolFactory
     network: arbitrum-one
@@ -79,6 +84,8 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - PoolInfo
+        - PoolFactoryConfig
+        - UnstakeRequest
       abis:
         - name: PoolFactory
           file: ./abis/PoolFactory.json
@@ -107,7 +114,8 @@ dataSources:
           handler: handleClaimFromPool
         - event: UpdateDelayPeriods()
           handler: handleUpdateDelayPeriods
-      file: ./src/pool-factory.ts
+      file: ./src/mappings/poolFactoryMappings.ts
+
   - kind: ethereum
     name: Xai
     network: arbitrum-one
@@ -127,4 +135,4 @@ dataSources:
       eventHandlers:
         - event: ConvertedToEsXai(indexed address,uint256)
           handler: handleConvertedToEsXai
-      file: ./src/xai.ts
+      file: ./src/mappings/xaiMappings.ts

@@ -1,0 +1,12 @@
+# src/schema/events/SentryWallet.graphql
+type SentryWallet @entity(immutable: false) {
+  id: String!
+  isKYCApproved: Boolean!
+  address: Bytes!
+  approvedOperators: [Bytes!]!
+  v1EsXaiStakeAmount: BigInt!
+  esXaiStakeAmount: BigInt!
+  keyCount: BigInt!
+  stakedKeyCount: BigInt!
+  sentryKeys: [SentryKey!]! @derivedFrom(field: "sentryWallet")
+}

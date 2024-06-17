@@ -1,3 +1,4 @@
+# src/schema/events/SentryKey.graphql
 type SentryKey @entity(immutable: false) {
   id: String!
   owner: Bytes! # address

@@ -1,0 +1,9 @@
+# src/schema/events/PoolFactoryConfig.graphql
+type PoolFactoryConfig @entity(immutable: false) {
+  id: String!
+  version: BigInt!
+  unstakeKeysDelayPeriod: BigInt!
+  unstakeGenesisKeyDelayPeriod: BigInt!
+  unstakeEsXaiDelayPeriod: BigInt!
+  updateRewardBreakdownDelayPeriod: BigInt!
+}
