@@ -86,7 +86,7 @@ type PoolFactoryConfig @entity(immutable: false) {
 # src/schema/events/PoolInfo.graphql
 type PoolInfo
   @entity(immutable: false)
-  @index(fields: ["totalStakedEsXaiAmount"]) {
+  @index(fields: ["totalStakedEsXaiAmount", "owner", "address"]) {
   id: String!
   address: Bytes!
   owner: Bytes!
@@ -147,13 +147,14 @@ type SentryKey @entity(immutable: false) {
 type SentryWallet @entity(immutable: false) {
   id: String!
   isKYCApproved: Boolean!
-  address: Bytes!
+  address: Bytes! @index
   approvedOperators: [Bytes!]!
   v1EsXaiStakeAmount: BigInt!
   esXaiStakeAmount: BigInt!
   keyCount: BigInt!
   stakedKeyCount: BigInt!
   sentryKeys: [SentryKey!]! @derivedFrom(field: "sentryWallet")
+  submissions: [Submission!]! @derivedFrom(field: "sentryWallet")
 }
 
 
@@ -179,15 +180,16 @@ type Submission @entity(immutable: false) {
   challengeNumber: BigInt!
   claimed: Boolean!
   eligibleForPayout: Boolean!
-  nodeLicenseId: BigInt! #TODO see if this can be removed sicne it can be found under sentryKey
+  nodeLicenseId: BigInt! @index #TODO see if this can be removed sicne it can be found under sentryKey
   assertionsStateRootOrConfirmData: String!
   claimAmount: BigInt!
   createdTimestamp: BigInt!
   claimTimestamp: BigInt!
   createdTxHash: Bytes!
   claimTxHash: Bytes!
-  sentryKey: SentryKey!
-  challenge: Challenge!
+  sentryKey: SentryKey! @index
+  challenge: Challenge! @index
+  sentryWallet: SentryWallet! @index
   submittedFrom: SubmittedFrom!
   claimedFrom: ClaimedFrom!
 }

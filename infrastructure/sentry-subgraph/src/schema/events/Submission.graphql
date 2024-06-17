@@ -16,15 +16,16 @@ type Submission @entity(immutable: false) {
   challengeNumber: BigInt!
   claimed: Boolean!
   eligibleForPayout: Boolean!
-  nodeLicenseId: BigInt! #TODO see if this can be removed sicne it can be found under sentryKey
+  nodeLicenseId: BigInt! @index #TODO see if this can be removed sicne it can be found under sentryKey
   assertionsStateRootOrConfirmData: String!
   claimAmount: BigInt!
   createdTimestamp: BigInt!
   claimTimestamp: BigInt!
   createdTxHash: Bytes!
   claimTxHash: Bytes!
-  sentryKey: SentryKey!
-  challenge: Challenge!
+  sentryKey: SentryKey! @index
+  challenge: Challenge! @index
+  sentryWallet: SentryWallet! @index
   submittedFrom: SubmittedFrom!
   claimedFrom: ClaimedFrom!
 }

@@ -1058,6 +1058,14 @@ export class SentryWallet extends Entity {
       "sentryKeys",
     );
   }
+
+  get submissions(): SubmissionLoader {
+    return new SubmissionLoader(
+      "SentryWallet",
+      this.get("id")!.toString(),
+      "submissions",
+    );
+  }
 }
 
 export class Submission extends Entity {
@@ -1253,6 +1261,19 @@ export class Submission extends Entity {
 
   set challenge(value: string) {
     this.set("challenge", Value.fromString(value));
+  }
+
+  get sentryWallet(): string {
+    let value = this.get("sentryWallet");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set sentryWallet(value: string) {
+    this.set("sentryWallet", Value.fromString(value));
   }
 
   get submittedFrom(): string {

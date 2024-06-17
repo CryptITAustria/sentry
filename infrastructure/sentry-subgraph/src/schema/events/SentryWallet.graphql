@@ -2,11 +2,12 @@
 type SentryWallet @entity(immutable: false) {
   id: String!
   isKYCApproved: Boolean!
-  address: Bytes!
+  address: Bytes! @index
   approvedOperators: [Bytes!]!
   v1EsXaiStakeAmount: BigInt!
   esXaiStakeAmount: BigInt!
   keyCount: BigInt!
   stakedKeyCount: BigInt!
   sentryKeys: [SentryKey!]! @derivedFrom(field: "sentryWallet")
+  submissions: [Submission!]! @derivedFrom(field: "sentryWallet")
 }

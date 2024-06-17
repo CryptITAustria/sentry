@@ -1,7 +1,7 @@
 # src/schema/events/PoolInfo.graphql
 type PoolInfo
   @entity(immutable: false)
-  @index(fields: ["totalStakedEsXaiAmount"]) {
+  @index(fields: ["totalStakedEsXaiAmount", "owner", "address"]) {
   id: String!
   address: Bytes!
   owner: Bytes!
