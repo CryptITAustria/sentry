@@ -1,0 +1,8 @@
+type PoolChallenge @entity(immutable: false) {
+  id: String!
+  challenge: Challenge! @index
+  pool: PoolInfo! @index
+  totalClaimedEsXaiAmount: BigInt!
+  totalStakedEsXaiAmount: BigInt!
+  totalStakedKeyAmount: BigInt!
+}

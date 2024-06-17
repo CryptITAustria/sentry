@@ -5,15 +5,13 @@ enum ChallengeStatus {
   Expired
 }
 
-type Challenge
-  @entity(immutable: false)
-  @index(fields: ["assertionTimestamp"]) {
+type Challenge @entity(immutable: false) {
   id: String!
   challengeNumber: BigInt! # uint256
   status: ChallengeStatus!
   assertionId: BigInt! # uint256
   assertionStateRootOrConfirmData: Bytes! # bytes
-  assertionTimestamp: BigInt! # uint64
+  assertionTimestamp: BigInt! @index # uint64
   challengerSignedHash: Bytes! # bytes
   activeChallengerPublicKey: Bytes! # bytes
   rollupUsed: Bytes! # address
@@ -24,5 +22,5 @@ type Challenge
   numberOfEligibleClaimers: BigInt! # uint256
   amountClaimedByClaimers: BigInt! # uint256
   submissions: [Submission!]! @derivedFrom(field: "challenge")
-  pool: PoolInfo! @derivedFrom(field: "poolChallenges")
+  poolChallenges: [PoolChallenge!]! @derivedFrom(field: "challenge")
 }

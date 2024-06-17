@@ -19,5 +19,5 @@ type PoolInfo
   ownerRequestedUnstakeKeyAmount: BigInt!
   ownerLatestUnstakeRequestCompletionTime: BigInt!
   createdTimestamp: BigInt!
-  poolChallenges: [Challenge!]! @derivedFrom(field: "pool")
+  poolChallenges: [PoolChallenge!]! @derivedFrom(field: "pool")
 }

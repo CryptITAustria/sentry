@@ -1,8 +1,8 @@
 # src/schema/events/UnstakeRequest.graphql
 type UnstakeRequest @entity(immutable: false) {
   id: String!
-  user: Bytes!
-  pool: Bytes!
+  user: Bytes! @index
+  pool: Bytes! @index
   index: BigInt!
   amount: BigInt!
   isKey: Boolean!
