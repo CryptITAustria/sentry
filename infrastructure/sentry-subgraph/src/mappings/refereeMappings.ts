@@ -184,6 +184,7 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
 }
 
 export function handleChallengeClosed(event: ChallengeClosedEvent): void {
+  if(event.block.number === BigInt.fromI32(54282286)) return; //TODO Remove this line after the next deployment
   // query for the challenge and update it
   const challenge = Challenge.load(event.params.challengeNumber.toString())
   if (challenge) {
@@ -206,6 +207,7 @@ export function handleChallengeExpired(event: ChallengeExpiredEvent): void {
 }
 
 export function handleChallengeSubmitted(event: ChallengeSubmittedEvent): void {
+  if(event.block.number === BigInt.fromI32(54282286)) return; //TODO Remove this line after the next deployment
   // create an entity for the challenge
   let challenge = new Challenge(event.params.challengeNumber.toString())
 

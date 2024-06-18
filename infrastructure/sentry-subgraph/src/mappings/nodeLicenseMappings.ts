@@ -8,6 +8,7 @@ import {
 } from "../../generated/schema"
 
 export function handleTransfer(event: TransferEvent): void {
+  if(event.block.number === BigInt.fromI32(54282286)) return; //TODO Remove this line after the next deployment
   let sentryWallet = SentryWallet.load(event.params.to.toHexString())
   if (!sentryWallet) {
     sentryWallet = new SentryWallet(event.params.to.toHexString())
