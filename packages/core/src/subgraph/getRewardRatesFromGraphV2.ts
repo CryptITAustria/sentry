@@ -149,8 +149,8 @@ export async function getRewardRatesFromGraphV2(slackWebhookUrl?: string): Promi
   }
 
   if(slackWebhookUrl !== undefined && slackWebhookUrl !== "" && slackWebhookUrl !== null) {
-    const averagePoolFetchTime = totalPoolTime / totalPoolFetches;
-    const averageChallengeFetchTime = totalChallengeTime / totalChallengeFetches;
+    const averagePoolFetchTime = Math.floor(totalPoolTime / totalPoolFetches);
+    const averageChallengeFetchTime = Math.floor(totalChallengeTime / totalChallengeFetches);
     await sendSlackNotification(slackWebhookUrl, `Average Pool Fetch Time: ${averagePoolFetchTime} ms, Average Challenge Fetch Time: ${averageChallengeFetchTime} ms`, console.log);
   }
 
