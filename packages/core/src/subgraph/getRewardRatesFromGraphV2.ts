@@ -18,7 +18,7 @@ const AVERAGE_WINDOW_DAYS = 7n;
 
 const POOL_BATCH_SIZE = 50;
 const CHALLENGE_BATCH_SIZE = 50;
-const SLEEP_TIME = 250;
+const SLEEP_TIME = 100;
 const RATE_LIMIT_SLEEP_TIME = 1000; // 1 second
 
 let totalPoolFetches = 0;
