@@ -2,6 +2,7 @@ import { GraphQLClient, gql } from "graphql-request";
 import { config } from "../config.js";
 import { PoolInfo } from "@sentry/sentry-subgraph-client";
 import { sendSlackNotification } from "../utils/sendSlackNotification.js";
+import { sleep } from "../utils/sleep.js";
 
 type PoolRewardRates = {
   poolAddress: string;
@@ -25,10 +26,6 @@ let totalChallengeFetches = 0;
 let totalChallengeTime = 0;
 
 //* End of efficiency settings
-
-async function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 async function fetchPoolInfos(client: GraphQLClient, skip: number): Promise<PoolInfo[]> {
   const query = gql`
