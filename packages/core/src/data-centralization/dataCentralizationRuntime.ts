@@ -10,6 +10,7 @@ import { Challenge } from '../challenger/getChallenge.js';
 import { IPool, PoolSchema } from './types.js';
 import { getRewardRatesFromGraph } from '../subgraph/getRewardRatesFromGraph.js';
 import { sendSlackNotification } from '../utils/sendSlackNotification.js';
+import { getRewardRatesFromGraphV2 } from '../subgraph/getRewardRatesFromGraphV2.js';
 
 /**
  * Arguments required to initialize the data centralization runtime.
@@ -105,7 +106,7 @@ export async function dataCentralizationRuntime({
 
 		const graphUpdateStartTime = new Date().getTime();
 
-		const updatedPools = await getRewardRatesFromGraph([]);
+		const updatedPools = await getRewardRatesFromGraphV2(slackWebHookUrl);
 
 		const graphUpdateEndTime = new Date().getTime();
 		const mongoInsertStartTime = new Date().getTime();

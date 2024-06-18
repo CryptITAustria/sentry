@@ -19,6 +19,7 @@ const AVERAGE_WINDOW_DAYS = 7n;
 const POOL_BATCH_SIZE = 50;
 const CHALLENGE_BATCH_SIZE = 50;
 const SLEEP_TIME = 100;
+const RATE_LIMIT_SLEEP_TIME = 10000; // 10 seconds
 
 let totalPoolFetches = 0;
 let totalPoolTime = 0;
@@ -26,6 +27,19 @@ let totalChallengeFetches = 0;
 let totalChallengeTime = 0;
 
 //* End of efficiency settings
+
+async function fetchWithRetry(query: string, variables: any, client: GraphQLClient, retries: number = 3): Promise<any> {
+  try {
+    return await client.request(query, variables);
+  } catch (error: any) {
+    if (error.response && error.response.status === 429 && retries > 0) {
+      await sleep(RATE_LIMIT_SLEEP_TIME);
+      return fetchWithRetry(query, variables, client, retries - 1);
+    } else {
+      throw error;
+    }
+  }
+}
 
 async function fetchPoolInfos(client: GraphQLClient, skip: number): Promise<PoolInfo[]> {
   const query = gql`
@@ -39,7 +53,7 @@ async function fetchPoolInfos(client: GraphQLClient, skip: number): Promise<Pool
     }
   `;
   const start = Date.now();
-  const result = await client.request(query, { skip });
+  const result = await fetchWithRetry(query, { skip }, client);
   const end = Date.now();
   totalPoolFetches++;
   totalPoolTime += (end - start);
@@ -61,7 +75,7 @@ async function fetchPoolChallenges(client: GraphQLClient, poolId: string, startT
     }
   `;
   const start = Date.now();
-  const result = await client.request(query, { poolId, startTimestamp, skip });
+  const result = await fetchWithRetry(query, { poolId, startTimestamp, skip }, client);
   const end = Date.now();
   totalChallengeFetches++;
   totalChallengeTime += (end - start);
@@ -77,7 +91,6 @@ export async function getRewardRatesFromGraphV2(slackWebhookUrl?: string): Promi
   let poolInfos: PoolInfo[] = [];
   let skip = 0;
 
-  // Fetch all pool infos in batched requests
   while (true) {
     const batch = await fetchPoolInfos(client, skip);
     if (batch.length === 0) break;
@@ -88,8 +101,6 @@ export async function getRewardRatesFromGraphV2(slackWebhookUrl?: string): Promi
 
   const poolRewardRates: PoolRewardRates[] = [];
 
-  // Iterate the pool infos and fetch challenges for each pool
-  // Challenges are fetched in batched requests
   for (const poolInfo of poolInfos) {
     const stakedBucketShare = BigInt(poolInfo.stakedBucketShare);
     const keyBucketShare = BigInt(poolInfo.keyBucketShare);
@@ -137,12 +148,11 @@ export async function getRewardRatesFromGraphV2(slackWebhookUrl?: string): Promi
     await sleep(SLEEP_TIME);
   }
 
-  // Send slack notification with average fetch times if webhook url is provided
-  if(slackWebhookUrl !== undefined) {
-  const averagePoolFetchTime = Math.floor(totalPoolTime / totalPoolFetches);
-  const averageChallengeFetchTime = Math.floor(totalChallengeTime / totalChallengeFetches);
-  const slackMessage = `Fetched ${totalPoolFetches} pools in ${totalPoolTime} ms, avg. fetch time: ${averagePoolFetchTime} ms, Fetched ${totalChallengeFetches} challenges in ${totalChallengeTime} ms, avg. fetch time: ${averageChallengeFetchTime} ms`
-  await sendSlackNotification(slackWebhookUrl, slackMessage);
+  if(slackWebhookUrl !== undefined && slackWebhookUrl !== "" && slackWebhookUrl !== null) {
+    const averagePoolFetchTime = totalPoolTime / totalPoolFetches;
+    const averageChallengeFetchTime = totalChallengeTime / totalChallengeFetches;
+    await sendSlackNotification(slackWebhookUrl, `Average Pool Fetch Time: ${averagePoolFetchTime} ms, Average Challenge Fetch Time: ${averageChallengeFetchTime} ms`, console.log);
   }
+
   return poolRewardRates;
 }
