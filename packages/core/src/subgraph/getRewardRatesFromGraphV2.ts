@@ -16,10 +16,10 @@ const AVERAGE_WINDOW_DAYS = 7n;
 // requests this allows us to "tune" for efficiency and avoid hitting the subgraph rate limits.
 // This will also help us measure what the graph is capable of handling.
 
-const POOL_BATCH_SIZE = 50;
-const CHALLENGE_BATCH_SIZE = 50;
-const SLEEP_TIME = 100;
-const RATE_LIMIT_SLEEP_TIME = 10000; // 10 seconds
+const POOL_BATCH_SIZE = 100;
+const CHALLENGE_BATCH_SIZE = 100;
+const SLEEP_TIME = 250;
+const RATE_LIMIT_SLEEP_TIME = 1000; // 1 second
 
 let totalPoolFetches = 0;
 let totalPoolTime = 0;
