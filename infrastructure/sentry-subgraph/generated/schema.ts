@@ -440,6 +440,19 @@ export class PoolChallenge extends Entity {
   set totalStakedKeyAmount(value: BigInt) {
     this.set("totalStakedKeyAmount", Value.fromBigInt(value));
   }
+
+  get assertionTimestamp(): BigInt {
+    let value = this.get("assertionTimestamp");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set assertionTimestamp(value: BigInt) {
+    this.set("assertionTimestamp", Value.fromBigInt(value));
+  }
 }
 
 export class PoolFactoryConfig extends Entity {
@@ -799,14 +812,6 @@ export class PoolInfo extends Entity {
 
   set createdTimestamp(value: BigInt) {
     this.set("createdTimestamp", Value.fromBigInt(value));
-  }
-
-  get poolChallenges(): PoolChallengeLoader {
-    return new PoolChallengeLoader(
-      "PoolInfo",
-      this.get("id")!.toString(),
-      "poolChallenges",
-    );
   }
 }
 

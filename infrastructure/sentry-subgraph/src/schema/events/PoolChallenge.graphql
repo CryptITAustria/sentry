@@ -5,4 +5,5 @@ type PoolChallenge @entity(immutable: false) {
   totalClaimedEsXaiAmount: BigInt!
   totalStakedEsXaiAmount: BigInt!
   totalStakedKeyAmount: BigInt!
+  assertionTimestamp: BigInt! @index
 }

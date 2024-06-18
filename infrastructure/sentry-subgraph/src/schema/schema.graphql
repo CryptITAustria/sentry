@@ -73,6 +73,7 @@ type PoolChallenge @entity(immutable: false) {
   totalClaimedEsXaiAmount: BigInt!
   totalStakedEsXaiAmount: BigInt!
   totalStakedKeyAmount: BigInt!
+  assertionTimestamp: BigInt! @index
 }
 
 
@@ -116,7 +117,6 @@ type PoolInfo
   ownerRequestedUnstakeKeyAmount: BigInt!
   ownerLatestUnstakeRequestCompletionTime: BigInt!
   createdTimestamp: BigInt!
-  poolChallenges: [PoolChallenge!]! @derivedFrom(field: "pool")
 }
 
 

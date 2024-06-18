@@ -28,6 +28,7 @@ import { getTxSignatureFromEvent } from "../utils/getTxSignatureFromEvent"
 import { updateChallenge } from "../utils/updateChallenge"
 
 import { ethereum, BigInt, Bytes, Address, log } from "@graphprotocol/graph-ts"
+import { savePoolChallenge } from "../utils/savePoolChallenge"
 
 export function handleInitialized(event: Initialized): void {
 
@@ -144,8 +145,13 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
   let keyCount = sentryWallet.keyCount.minus(sentryWallet.stakedKeyCount)
   if (sentryKey.assignedPool.toHexString() != (new Address(0).toHexString())) {
     const pool = PoolInfo.load(sentryKey.assignedPool.toHexString())
-    stakeAmount = pool!.totalStakedEsXaiAmount
-    keyCount = pool!.totalStakedKeyAmount
+    if(!pool){
+      log.warning("Failed to find pool handleAssertionSubmitted: keyID: " + event.params.nodeLicenseId.toString() + ", TX: " + event.transaction.hash.toHexString(), [])
+      return;
+    }
+    stakeAmount = pool.totalStakedEsXaiAmount
+    keyCount = pool.totalStakedKeyAmount
+    savePoolChallenge(challenge, submission, pool);
   }
 
   const maxStakeAmount = getMaxStakeAmount(stakeAmount, keyCount, refereeConfig.maxStakeAmountPerLicense)
@@ -173,6 +179,8 @@ export function handleAssertionSubmitted(event: AssertionSubmittedEvent): void {
     challenge.numberOfEligibleClaimers = challenge.numberOfEligibleClaimers.plus(BigInt.fromI32(1))
     challenge.save()
   }
+
+
 }
 
 export function handleChallengeClosed(event: ChallengeClosedEvent): void {
