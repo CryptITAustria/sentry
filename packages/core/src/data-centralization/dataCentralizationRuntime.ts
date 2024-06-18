@@ -128,7 +128,7 @@ export async function dataCentralizationRuntime({
 		const totalSeconds = mongoInsertEndTime - startTime;
 		const totalGraphSeconds = graphUpdateEndTime - graphUpdateStartTime;
 		const totalMongoSeconds = mongoInsertEndTime - mongoInsertStartTime;
-		const slackMessage = `Finished pool sync update for ${updatedPools.length} @ ${mongoInsertEndTime} in ${totalSeconds}ms. Graph update took ${totalGraphSeconds}ms. Mongo insert took ${totalMongoSeconds}ms.`;
+		const slackMessage = `Finished pool sync update for ${updatedPools.length} pools @ ${mongoInsertEndTime} in ${totalSeconds}ms. Graph update took ${totalGraphSeconds}ms. Mongo insert took ${totalMongoSeconds}ms.`;
 
 		sendSlackNotification(slackWebHookUrl, slackMessage, logFunction);
 	});
