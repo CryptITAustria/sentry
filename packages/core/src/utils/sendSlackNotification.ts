@@ -1,10 +1,12 @@
 import axios from "axios";
 
-export const sendSlackNotification = async (webhookUrl: string, message: string, logCallback: (logMessage: string) => void): Promise<void> => {
+export const sendSlackNotification = async (webhookUrl: string, message: string, logCallback?: (logMessage: string) => void): Promise<void> => {
     if (!webhookUrl || webhookUrl.length === 0) {
+        if(logCallback!==undefined){
         logCallback(`Failed to send slack notification, missing webhook url.`);
         logCallback(`Failed message: ${message}`);   
     }
+}
 
     let stringifiedMessage = typeof message !== 'string' ? JSON.stringify(message) : message;
 
@@ -13,18 +15,21 @@ export const sendSlackNotification = async (webhookUrl: string, message: string,
     };
 
     try {
-
     const response = await axios.post(webhookUrl, {
         text: stringifiedMessage
     }, { headers });
 
     if (response.status !== 200) {
+        if(logCallback!==undefined){
         logCallback(`Failed to send slack notification webhook: ${webhookUrl}`);
         logCallback(`Failed to send slack notification message: ${message}`);   
+        }
     }
         
     } catch (error) {
-        logCallback(`Failed to send slack notification webhook: ${webhookUrl}`);
-        logCallback(`Failed to send slack notification message: ${message}`);        
+        if(logCallback !== undefined) {
+            logCallback(`Failed to send slack notification webhook: ${webhookUrl}`);
+            logCallback(`Failed to send slack notification message: ${message}`);        
+        }
     }
 }

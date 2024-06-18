@@ -15,8 +15,8 @@ export function startCentralizationRuntime(cli: Vorpal) {
             },{
                 type: 'input',
                 name: 'slackWebHookUrl',
-                message: 'Enter the Slack Webhook Notifications URL:',
-                optional: false
+                message: 'Enter the Slack Webhook Notifications URL: (optional)',
+                optional: true
             }];
             const { mongoUri, slackWebHookUrl } = await this.prompt(prompts);
 
