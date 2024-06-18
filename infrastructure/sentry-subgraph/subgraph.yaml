@@ -6,11 +6,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: Referee
-    network: arbitrum-sepolia
+    network: arbitrum-one
     source:
-      address: "0xF84D76755a68bE9DFdab9a0b6d934896Ceab957b"
+      address: "0xfD41041180571C5D371BEA3D9550E55653671198"
       abi: Referee
-      startBlock: 26974804
+      startBlock: 157193676
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -51,11 +51,11 @@ dataSources:
 
   - kind: ethereum
     name: NodeLicense
-    network: arbitrum-sepolia
+    network: arbitrum-one
     source:
-      address: "0x07C05C6459B0F86A6aBB3DB71C259595d22af3C2"
+      address: "0xbc14d8563b248B79689ECbc43bBa53290e0b6b66"
       abi: NodeLicense
-      startBlock: 15609970
+      startBlock: 157193743
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -73,11 +73,11 @@ dataSources:
 
   - kind: ethereum
     name: PoolFactory
-    network: arbitrum-sepolia
+    network: arbitrum-one
     source:
-      address: "0x87Ae2373007C01FBCED0dCCe4a23CA3f17D1fA9A"
+      address: "0xF9E08660223E2dbb1c0b28c82942aB6B5E38b8E5"
       abi: PoolFactory
-      startBlock: 26975569
+      startBlock: 200013500
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -118,7 +118,7 @@ dataSources:
 
   - kind: ethereum
     name: Xai
-    network: arbitrum-sepolia
+    network: arbitrum-one
     source:
       address: "0x4Cb9a7AE498CEDcBb5EAe9f25736aE7d428C9D66"
       abi: Xai
