@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { getPoolAddressesFromGraph } from '../subgraph/getPoolAddressesFromGraph.js';
 import { updatePoolInDB } from './updatePoolInDB.js';
 import { getAddress } from "ethers";
+import { sleep } from '../utils/sleep.js';
 
 /**
  * Arguments required to initialize the data centralization runtime.
@@ -39,7 +40,8 @@ export async function poolDataSync({
 		const poolAddress = poolsAddresses[i];
 		try {
 			logFunction("Trying to update " + poolAddress);
-			await updatePoolInDB(getAddress(poolAddress), "UpdateMetadata");
+			await sleep(250)
+			updatePoolInDB(getAddress(poolAddress), "UpdateMetadata");
 			logFunction("Updated " + poolAddress)
 		} catch (error) {
 			logFunction("Errored " + poolAddress + "\n" + error)
