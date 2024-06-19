@@ -119,7 +119,8 @@ export async function dataCentralizationRuntime({
 				{
 					$set: {
 						esXaiRewardRate: updatedPool.averageDailyEsXaiReward,
-						keyRewardRate: updatedPool.averageDailyKeyReward
+						keyRewardRate: updatedPool.averageDailyKeyReward,
+						totalEsXaiClaimed: updatedPool.totalEsXaiClaimed
 					}
 				},
 			);
