@@ -32,6 +32,27 @@ export function CreatePool(deployInfrastructure, poolConfigurations) {
 			).to.be.revertedWith("2");
 		});
 
+		it("Must pass KYC to create pool", async function () {
+			const {poolFactory, addr3, nodeLicense} = await loadFixture(deployInfrastructure);
+
+			// Mint a node key & save the id
+			const price = await nodeLicense.price(1, "");
+			await nodeLicense.connect(addr3).mint(1, "", { value: price });
+			const mintedKeyId = await nodeLicense.totalSupply();
+
+			// Fail to create pool without KYC
+			await expect(
+				poolFactory.connect(addr3).createPool(
+					noDelegateOwner,
+					[mintedKeyId],
+					validShareValues,
+					poolMetaData,
+					poolSocials,
+					poolTrackerDetails
+				)
+			).to.be.revertedWith("35");
+		});
+
 		it("Check that the shares cannot go over the max values (bucketshareMaxValues = ordered owner, keys, esXaiStaker)", async function () {
 			const {poolFactory, addr1, nodeLicense} = await loadFixture(deployInfrastructure);
 
