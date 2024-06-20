@@ -13,7 +13,7 @@ export function SubmittingAndClaiming(deployInfrastructure, poolConfigurations) 
 
 	return function () {
 		it("Pool owner should be able to submit multiple assertions & bulk claim for multiple winning keys in a pool (single license holder)", async function () {
-			const {poolFactory, addr1, addr2, nodeLicense, referee, operator, esXai, esXaiMinter, challenger} = await loadFixture(deployInfrastructure);
+			const {poolFactory, addr1, addr3, nodeLicense, referee, operator, esXai, esXaiMinter, challenger} = await loadFixture(deployInfrastructure);
 
 			// Get a single key for addr1
 			const singlePrice = await nodeLicense.price(1, "");
@@ -31,22 +31,22 @@ export function SubmittingAndClaiming(deployInfrastructure, poolConfigurations) 
 			);
 
 			// Save the new pool's address
-			const stakingPoolAddress = await poolFactory.connect(addr2).getPoolAddress(0);
+			const stakingPoolAddress = await poolFactory.connect(addr3).getPoolAddress(0);
 
-			// Mint 2 keys to addr2 & stake
-			const keysToMintForAddr2 = 2n;
-			const addr2KeyMintPrice = await nodeLicense.price(keysToMintForAddr2, "");
-			await nodeLicense.connect(addr2).mint(keysToMintForAddr2, "", {value: addr2KeyMintPrice});
-			const addr2MintedKeyIds = [];
-			for (let i = addr1MintedKeyId; i < addr1MintedKeyId + keysToMintForAddr2; i++) {
-				addr2MintedKeyIds.push(i + 1n);
+			// Mint 2 keys to addr3 & stake
+			const keysToMintForAddr3 = 2n;
+			const addr3KeyMintPrice = await nodeLicense.price(keysToMintForAddr3, "");
+			await nodeLicense.connect(addr3).mint(keysToMintForAddr3, "", {value: addr3KeyMintPrice});
+			const addr3MintedKeyIds = [];
+			for (let i = addr1MintedKeyId; i < addr1MintedKeyId + keysToMintForAddr3; i++) {
+				addr3MintedKeyIds.push(i + 1n);
 			}
-			await poolFactory.connect(addr2).stakeKeys(stakingPoolAddress, addr2MintedKeyIds);
+			await poolFactory.connect(addr3).stakeKeys(stakingPoolAddress, addr3MintedKeyIds);
 
 
-			// Make winning state root for both of addr2's keys
+			// Make winning state root for both of addr3's keys
 			const challengeId = 0;
-			const winningStateRoot = await findWinningStateRoot(referee, addr2MintedKeyIds, challengeId);
+			const winningStateRoot = await findWinningStateRoot(referee, addr3MintedKeyIds, challengeId);
 
 			// Mint some esXai to increase the total supply for submitting the first challenge so that there is available reward
 			await esXai.connect(esXaiMinter).mint(await esXaiMinter.getAddress(), 1_000_000);
@@ -65,16 +65,16 @@ export function SubmittingAndClaiming(deployInfrastructure, poolConfigurations) 
 			const {openForSubmissions} = await referee.getChallenge(0);
 			expect(openForSubmissions).to.equal(true);
 
-			// Approve the operator for addr2
+			// Approve the operator for addr3
 			// const operatorAddress = await operator.getAddress();
-			// await referee.connect(addr2).setApprovalForOperator(operatorAddress, true);
+			// await referee.connect(addr3).setApprovalForOperator(operatorAddress, true);
 
 			// Submit a winning hash
-			await referee.connect(addr1).submitMultipleAssertions(addr2MintedKeyIds, challengeId, winningStateRoot);
+			await referee.connect(addr1).submitMultipleAssertions(addr3MintedKeyIds, challengeId, winningStateRoot);
 
 			// Grab both the submissions & expect them to both be eligible
-			const submission1 = await referee.getSubmissionsForChallenges([challengeId], addr2MintedKeyIds[0]);
-			const submission2 = await referee.getSubmissionsForChallenges([challengeId], addr2MintedKeyIds[1]);
+			const submission1 = await referee.getSubmissionsForChallenges([challengeId], addr3MintedKeyIds[0]);
+			const submission2 = await referee.getSubmissionsForChallenges([challengeId], addr3MintedKeyIds[1]);
 			expect(submission1[0].eligibleForPayout).to.equal(true);
 			expect(submission2[0].eligibleForPayout).to.equal(true);
 
@@ -92,7 +92,7 @@ export function SubmittingAndClaiming(deployInfrastructure, poolConfigurations) 
 			expect(poolBalanceBalance1).to.equal(0);
 
 			// Bulk reward claim as operator
-			await referee.connect(operator).claimMultipleRewards(addr2MintedKeyIds, challengeId, stakingPoolAddress);
+			await referee.connect(operator).claimMultipleRewards(addr3MintedKeyIds, challengeId, stakingPoolAddress);
 
 			// Make sure the staking pool has balance now
 			const poolBalanceBalance2 = await esXai.connect(addr1).balanceOf(stakingPoolAddress);
@@ -132,7 +132,6 @@ export function SubmittingAndClaiming(deployInfrastructure, poolConfigurations) 
 			const addr3KeyMintPrice = await nodeLicense.price(1, "");
 			await nodeLicense.connect(addr3).mint(1, "", {value: addr3KeyMintPrice});
 			const addr3MintedKeyId = await nodeLicense.totalSupply();
-			await referee.connect(kycAdmin).addKycWallet(await addr3.getAddress());
 			await poolFactory.connect(addr3).stakeKeys(stakingPoolAddress, [addr3MintedKeyId]);
 
 			// Make winning state root for both of addr2's keys

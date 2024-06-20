@@ -338,8 +338,8 @@ export function StakeKeysToPool(deployInfrastructure, poolConfigurations) {
 			expect(userPoolAddressOfUser2).to.equal(stakingPoolAddress);
 		});
 
-		it("Create pool with multiple stakers, try to unstake all, then restake", async function () {
-			const {poolFactory, addr1, addr2, addr3, nodeLicense, kycAdmin, referee} = await loadFixture(deployInfrastructure);
+		it("Create pool with multiple stakers and KYC status, try to unstake all, then restake", async function () {
+			const {poolFactory, addr1, addr2, addr3, nodeLicense} = await loadFixture(deployInfrastructure);
 
 			// Mint 2 node keys & save the ids
 			const price1 = await nodeLicense.price(1, "");
@@ -390,9 +390,6 @@ export function StakeKeysToPool(deployInfrastructure, poolConfigurations) {
 			const price6 = await nodeLicense.price(1, "");
 			await nodeLicense.connect(addr3).mint(1, "", {value: price6});
 			const mintedKeyId6 = await nodeLicense.totalSupply();
-
-			// KYC addr3
-			await referee.connect(kycAdmin).addKycWallet(await addr3.getAddress());
 
 			// Both users stake a key into pool 1
 			await poolFactory.connect(addr2).stakeKeys(stakingPoolAddress1, [mintedKeyId3]);
