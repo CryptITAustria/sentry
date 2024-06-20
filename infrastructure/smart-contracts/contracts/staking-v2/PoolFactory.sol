@@ -49,6 +49,7 @@ import "./PoolBeacon.sol";
 // 32: You must have at least the desired un-stake amount staked in order to un-stake
 // 33: Invalid pool for claim; pool needs to have been created via the PoolFactory
 // 34: Invalid delegate update; pool needs to have been created via the PoolFactory
+// 35: Pool owner is not KYC'd
 
 contract PoolFactory is Initializable, AccessControlEnumerableUpgradeable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
@@ -216,6 +217,7 @@ contract PoolFactory is Initializable, AccessControlEnumerableUpgradeable {
         require(_keyIds.length > 0, "2");
         require(validateShareValues(_shareConfig), "3");
         require(msg.sender != _delegateOwner, "4");
+        require(Referee5(refereeAddress).isKycApproved(msg.sender), "35");
 
         (
             address poolProxy,
