@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {WebBuyKeysQuantity} from "@/features/checkout/WebBuyKeysQuantity";
 import {WebBuyKeysOrderTotal} from "@/features/checkout/WebBuyKeysOrderTotal";
 import {useGetPriceForQuantity} from "@/features/checkout/hooks/useGetPriceForQuantity";
-import {useContractWrite} from "wagmi";
+import {useContractWrite, useNetwork} from "wagmi";
 import {config, NodeLicenseAbi} from "@sentry/core";
 import {BiLoaderAlt} from "react-icons/bi";
 import {FaCircleCheck} from "react-icons/fa6";
@@ -48,9 +48,10 @@ export function Checkout() {
 	});
 
 	const pathName = window.location.href;
+	const {chain} = useNetwork();
 
 	useEffect(() => {
-		const newTab = isSuccess && window.open(`${redirects[pathName as keyof IRedirects]}/staking/?chainId=${421614}&modal=true`, "_blank")
+		const newTab = isSuccess && window.open(`${redirects[pathName as keyof IRedirects]}/staking/?chainId=${chain?.id}&modal=true`, "_blank")
 		newTab && newTab.focus();
 	}, [isSuccess]);
 
