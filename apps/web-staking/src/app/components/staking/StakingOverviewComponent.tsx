@@ -8,7 +8,7 @@ import StakedPoolsTable from "./StakedPoolsTable";
 import ClaimableRewardsComponent from "./ClaimableRewardsComponent";
 import MainTitle from "../titles/MainTitle";
 import { PagedPools } from "@/server/services/Pool.service";
-import {usePathname, useSearchParams} from "next/navigation";
+import {useSearchParams} from "next/navigation";
 import { useRouter } from "next/navigation";
 import AgreeModalComponent from "../modal/AgreeModalComponents";
 import { useGetMaxKeyPerPool, useGetTotalStakedHooks, useGetUserInteractedPools } from "@/app/hooks/hooks";
