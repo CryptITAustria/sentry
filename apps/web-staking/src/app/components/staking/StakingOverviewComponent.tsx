@@ -8,7 +8,7 @@ import StakedPoolsTable from "./StakedPoolsTable";
 import ClaimableRewardsComponent from "./ClaimableRewardsComponent";
 import MainTitle from "../titles/MainTitle";
 import { PagedPools } from "@/server/services/Pool.service";
-import { useSearchParams } from "next/navigation";
+import {usePathname, useSearchParams} from "next/navigation";
 import { useRouter } from "next/navigation";
 import AgreeModalComponent from "../modal/AgreeModalComponents";
 import { useGetMaxKeyPerPool, useGetTotalStakedHooks, useGetUserInteractedPools } from "@/app/hooks/hooks";
@@ -141,11 +141,11 @@ export const StakingOverviewComponent = ({ pagedPools }: { pagedPools: PagedPool
   }
 
   const isModal = useSearchParams().get("modal");
+  const clearedPathname = window.location.href.split("&")[0];
 
   const onModalSubmit = () => {
-    router.replace(`http://localhost:3000/staking?chainId=${chainId}`);
+    router.replace(clearedPathname);
   };
-
 
 
   return (
