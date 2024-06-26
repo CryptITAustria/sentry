@@ -17,6 +17,7 @@ import { loadingNotification, updateNotification } from "../notifications/Notifi
 import { getNetwork, getTotalClaimAmount, mapWeb3Error } from "@/services/web3.service";
 import { Id } from "react-toastify";
 import { useGetTiers } from "@/app/hooks/useGetTiers";
+import {BaseModal} from "@/app/components/ui";
 
 export const StakingOverviewComponent = ({ pagedPools }: { pagedPools: PagedPools }) => {
   const router = useRouter();
@@ -139,6 +140,14 @@ export const StakingOverviewComponent = ({ pagedPools }: { pagedPools: PagedPool
     }
   }
 
+  const isModal = useSearchParams().get("modal");
+
+  const onModalSubmit = () => {
+    router.replace(`http://localhost:3000/staking?chainId=${chainId}`);
+  };
+
+
+
   return (
     <div className="relative flex sm:flex-col items-start lg:px-6 sm:px-0 sm:w-full">
       <AgreeModalComponent address={address} />
@@ -152,6 +161,16 @@ export const StakingOverviewComponent = ({ pagedPools }: { pagedPools: PagedPool
         /></div>}
 
       </div>
+
+      <BaseModal
+          isOpened={!!isModal}
+          modalHeader={"Stake keys in a pool to earn rewards"}
+          modalBody={"Choose a pool and stake keys in the pool to start earning rewards"}
+          closeModal={onModalSubmit}
+          submitText={"Start staking"}
+          withOutCancelButton
+          onSubmit={onModalSubmit}
+      />
 
       {(address && (userPools.length > 0 || totalStaked > 0)) && <StakedPoolsTable v1Stake={totalStaked} v1MaxStake={maxStakedCapacity} userPools={userPools} tiers={tiers} showTableKeys={showTableKeys} maxKeyPerPool={maxKeyPerPool} />}
 

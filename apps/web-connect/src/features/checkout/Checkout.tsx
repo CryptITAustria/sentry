@@ -10,6 +10,7 @@ import {useProvider} from "@/features/checkout/hooks/useProvider";
 import {CustomTooltip, PrimaryButton} from "@sentry/ui";
 import { InfoPointRed, RedSentryIcon } from "@sentry/ui/src/rebrand/icons/IconsComponents";
 import logo from '../../../public/images/sentry-main.png'
+import {IRedirects, redirects} from "@/features/checkout/constants";
 
 export function Checkout() {
 	const queryString = window.location.search;
@@ -45,6 +46,13 @@ export function Checkout() {
 			console.warn("Error", error);
 		},
 	});
+
+	const pathName = window.location.href;
+
+	useEffect(() => {
+		const newTab = isSuccess && window.open(`${redirects[pathName as keyof IRedirects]}/staking/?chainId=${421614}&modal=true`, "_blank")
+		newTab && newTab.focus();
+	}, [isSuccess]);
 
 	function returnToClient() {
 		window.location = `xai-sentry://purchase-successful?txHash=${data?.hash}` as unknown as Location;
