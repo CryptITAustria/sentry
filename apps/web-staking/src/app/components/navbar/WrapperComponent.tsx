@@ -4,7 +4,7 @@ import { useTheme } from "next-themes";
 import NavbarComponent from "./NavbarComponent";
 import SidebarComponent from "./SidebarComponent";
 import { useEffect } from "react";
-import AnnouncementBanner from "@/app/components/announcementBanner";
+import AnnouncementBanner from "@/app/components/announcementBanner/AnnouncementBanner";
 
 export default function WrapperComponent({ children }: { children: React.ReactNode }) {
 
