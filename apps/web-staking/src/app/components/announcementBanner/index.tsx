@@ -14,9 +14,6 @@ const AnnouncementBanner = ({title, text, href}: IAnnouncementBanner) => {
     useEffect(() => {
         const value = sessionStorage.getItem("announcement_banner") || "1";
         setIsShow(+value);
-        return () => {
-            sessionStorage.removeItem("announcement_banner");
-        }
     }, [])
 
     const closeBanner = (e: any) => {
@@ -24,6 +21,10 @@ const AnnouncementBanner = ({title, text, href}: IAnnouncementBanner) => {
         setIsShow(0);
         sessionStorage.setItem("announcement_banner", "0");
     };
+
+    window.onbeforeunload = function() {
+        sessionStorage.removeItem("announcement_banner");
+    }
 
     return (
         <>
