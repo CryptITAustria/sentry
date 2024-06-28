@@ -8,9 +8,10 @@ import { expect } from "chai";
 export function esXaiTests(deployInfrastructure) {
     return function() {
         it("Check calling the initializer is not allowed afterwards", async function() {
-            const {esXai, esXaiMinter, xai} = await loadFixture(deployInfrastructure);
+            const {esXai, esXaiMinter, xai, referee, nodeLicense} = await loadFixture(deployInfrastructure);
             const expectedRevertMessage = "Initializable: contract is already initialized";
-            await expect(esXai.connect(esXaiMinter).initialize(await xai.getAddress(), BigInt(500))).to.be.revertedWith(expectedRevertMessage);
+            const maxKeysNonKyc = 1;
+            await expect(esXai.connect(esXaiMinter).initialize(await referee.getAddress(), await nodeLicense.getAddress(), BigInt(maxKeysNonKyc))).to.be.revertedWith(expectedRevertMessage);
         })
 
         it("Check esXai can be minted by an address with the minter role", async function() {
