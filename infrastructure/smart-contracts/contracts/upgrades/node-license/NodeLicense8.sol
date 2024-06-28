@@ -128,11 +128,11 @@ contract NodeLicense8 is ERC721EnumerableUpgradeable, AccessControlUpgradeable {
         esXaiAddress = _esXaiAddress;
 
         // Set max supply to 0 to prevent minting until airdrop is complete and pricing tiers are set
-        maxSupply = 0;
+        //maxSupply = 0;
 
         // Delete Existing Pricing Tiers
         // This is required to ensure when the new pricing tiers are set, the maxSupply is updated correctly
-        delete pricingTiers;
+        //delete pricingTiers;
 
         // Grant the airdrop admin role to the airdrop admin address
         _grantRole(AIRDROP_ADMIN_ROLE, airdropAdmin);
