@@ -399,7 +399,7 @@ export function handleBatchRewardsClaimed(event: BatchRewardsClaimedEvent): void
     const ownerWallet = SentryWallet.load(sentryKey.sentryWallet)
     if (ownerWallet) {
       if (
-        ownerWallet.isKYCApproved &&
+        ownerWallet.isKYCApproved && // TODO omit this if were on the new referee version
         sentryKey.mintTimeStamp.lt(challenge.createdTimestamp) &&
         !submission.claimed &&
         submission.eligibleForPayout
