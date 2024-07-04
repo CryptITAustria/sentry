@@ -16,6 +16,8 @@ import { MODAL_BODY_TEXT } from "./Constants";
 import { WriteFunctions, executeContractWrite } from "@/services/web3.writes";
 import { BaseModal, PrimaryButton } from "@/app/components/ui";
 import { TextButton } from "@/app/components/ui/buttons";
+import { useGetKYCApproved } from "@/app/hooks";
+import DropdownModal from "../ui/modals/DropdownModal";
 
 interface HistoryCardProps {
 	receivedAmount: number,
@@ -159,9 +161,11 @@ export default function History({ redemptions, reloadRedemptions }: {
 	const { chainId } = useAccount();
 	const [receipt, setReceipt] = useState<`0x${string}` | undefined>();
 	const [isCancel, setIsCancel] = useState(false);
+	const [showKYCModal, setShowKYCModal] = useState(false);
 
 	const { switchChain } = useSwitchChain();
 	const { writeContractAsync } = useWriteContract();
+	const { isApproved } = useGetKYCApproved();
 
 	// Substitute Timeouts with useWaitForTransaction
 	const { data, isError, isLoading, isSuccess, status } = useWaitForTransactionReceipt({
@@ -194,6 +198,10 @@ export default function History({ redemptions, reloadRedemptions }: {
 	}, [isSuccess, isError, updateOnSuccess, updateOnError]);
 
 	const onClaim = async (redemption: RedemptionRequest) => {
+		if(!isApproved) {
+			setShowKYCModal(true);
+			return
+		}
 		setIsCancel(false);
 		setLoadingIndex(redemption.index);
 		toastId.current = loadingNotification("Transaction is pending...");
@@ -235,6 +243,16 @@ export default function History({ redemptions, reloadRedemptions }: {
 	return (
 		<>
 			<div className="group flex flex-col w-xl">
+				<DropdownModal
+					isOpened={showKYCModal}
+					closeModal={() => setShowKYCModal(false)}
+					onSubmit={() => setShowKYCModal(false)}
+					modalHeader="Pass KYC to claim" 
+					modalBody={<>Your wallet must pass KYC first before you are able to claim. <br /> To start KYC, first choose your country before continuing.</>} 
+					submitText="CONTINUE"
+					cancelText="CANCEL"
+					isDropdown
+				/>
 				{(redemptions.claimable.length > 0 || redemptions.open.length > 0) &&
 					<div className="bg-nulnOil/85 box-shadow-default mb-[53px]">
 						<MainTitle
