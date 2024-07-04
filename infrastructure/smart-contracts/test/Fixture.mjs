@@ -15,9 +15,8 @@ import {extractAbi} from "../utils/exportAbi.mjs";
 import {Beacons} from "./Beacons.mjs";
 import {RefereePoolSubmissions} from "./tinykeys/RefereePoolSubmissions.mjs";
 import {NodeLicenseTinyKeysTest} from "./NodeLicenseTinyKeys.mjs";
-
-import {Beacons} from "./Beacons.mjs";
 import { Console } from "console";
+
 describe("Fixture Tests", function () {
 
     // We define a fixture to reuse the same setup in every test. We use
@@ -185,7 +184,7 @@ describe("Fixture Tests", function () {
 		await referee8.waitForDeployment();
 
         // Referee9
-        const Referee9 = await ethers.getContractFactory("Referee9");
+        const Referee9 = await ethers.getContractFactory("Referee9A");
         const referee9 = await upgrades.upgradeProxy((await referee.getAddress()), Referee9, { call: { fn: "initialize", args: [] } });
         await referee9.waitForDeployment();
 
@@ -399,7 +398,7 @@ describe("Fixture Tests", function () {
     // describe("StakingV2", StakingV2(deployInfrastructure).bind(this));
     // describe("Beacon Tests", Beacons(deployInfrastructure).bind(this));
     // describe("Gas Subsidy", GasSubsidyTests(deployInfrastructure).bind(this));
-    // describe("Upgrade Tests", UpgradeabilityTests(deployInfrastructure).bind(this));
+    describe("Upgrade Tests", UpgradeabilityTests(deployInfrastructure).bind(this));
     // describe("PoolSubmissions", RefereePoolSubmissions(deployInfrastructure).bind(this));
     // describe("Node License Tiny Keys", NodeLicenseTinyKeysTest(deployInfrastructure, getBasicPoolConfiguration()).bind(this));
 
