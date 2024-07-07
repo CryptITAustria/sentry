@@ -123,12 +123,12 @@ contract OperatorReader is AccessControlUpgradeable {
      * @return mintTimestamps An array of mint timestamps for each key.
      * @return pools An array of pool addresses.
      */
-    function getOperatorKeys(address operator) public view returns (address[] memory ownerAddresses, uint256[] memory keyIds, uint256[] memory mintTimestamps, address[] memory pools) {
+    function getOperatorKeys(address operator) public view returns (address[] memory ownerAddresses, uint256[] memory keyIds, uint256[] memory mintTimestamps, address[] memory pools, uint256 maxKeys) {
         ownerAddresses = getAllOwnersForAnOperator(operator);
         uint256 count = 0;
-        address[] memory tempOwnerAddresses = new address[](1000);
-        uint256[] memory tempKeyIds = new uint256[](1000);
-        uint256[] memory tempMintTimestamps = new uint256[](1000);
+        address[] memory tempOwnerAddresses = new address[](maxKeys);
+        uint256[] memory tempKeyIds = new uint256[](maxKeys);
+        uint256[] memory tempMintTimestamps = new uint256[](maxKeys);
 
         for (uint256 i = 0; i < ownerAddresses.length; i++) {
             address owner = ownerAddresses[i];
@@ -138,6 +138,9 @@ contract OperatorReader is AccessControlUpgradeable {
                 tempKeyIds[count] = ownerKeys[j];
                 tempMintTimestamps[count] = ownerMintTimestamps[j];
                 count++;
+                if (count >= maxKeys) {
+                    break;
+                }
             }
         }
         (ownerAddresses, keyIds, mintTimestamps) = filterEmptyValues(tempOwnerAddresses, tempKeyIds, tempMintTimestamps, count);
