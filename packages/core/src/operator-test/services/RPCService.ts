@@ -66,11 +66,11 @@ export class RPCService {
     poolsOperated: string[],
     refereeConfig:RefereeConfig
   }> {
-    try {  
-
+    try {
+      const maxKeysToRetrieve = 1000;
       const refereeConfig = await this.getRefereeConfigFromRPC();
       const reader = new ethers.Contract(config.operatorReaderAddress, RefereeAbi, this.provider);
-      const operatorResults = await reader.getOperatorKeys(operatorAddress);
+      const operatorResults = await reader.getOperatorKeys(operatorAddress, maxKeysToRetrieve);
       const ownerAddresses = operatorResults[0];
       const filteredOwnerAddresses = new Set(ownerAddresses as string[]);
       const keyIds = operatorResults[1];

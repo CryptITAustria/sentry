@@ -123,27 +123,39 @@ contract OperatorReader is AccessControlUpgradeable {
      * @return mintTimestamps An array of mint timestamps for each key.
      * @return pools An array of pool addresses.
      */
-    function getOperatorKeys(address operator) public view returns (address[] memory ownerAddresses, uint256[] memory keyIds, uint256[] memory mintTimestamps, address[] memory pools, uint256 maxKeys) {
-        ownerAddresses = getAllOwnersForAnOperator(operator);
-        uint256 count = 0;
+    function getOperatorKeys(address operator, uint256 maxKeys) public view returns (address[] memory ownerAddresses, uint256[] memory keyIds, uint256[] memory mintTimestamps, address[] memory pools) {
+       ownerAddresses = getAllOwnersForAnOperator(operator);
+        uint256 count = 0; // Keep track of the number of unstaked keys retrieved
+
+        // Since we don't know how many keys each owner has, we need
+        // to create temporary arrays to store the values before filtering
         address[] memory tempOwnerAddresses = new address[](maxKeys);
         uint256[] memory tempKeyIds = new uint256[](maxKeys);
         uint256[] memory tempMintTimestamps = new uint256[](maxKeys);
 
+        // Loop through each owner and retrieve their unstaked keys
         for (uint256 i = 0; i < ownerAddresses.length; i++) {
             address owner = ownerAddresses[i];
-            (uint256 [] memory ownerKeys, uint256 [] memory ownerMintTimestamps) = getUnstakedKeysForOwner(ownerAddresses[i]);
+            // Retrieve unstaked keys for the owner
+            (uint256 [] memory ownerKeys, uint256 [] memory ownerMintTimestamps) = getUnstakedKeysForOwner(ownerAddresses[i], maxKeys);
+
+            // Add the owner keys to the temporary arrays
             for (uint256 j = 0; j < ownerKeys.length; j++) {
                 tempOwnerAddresses[count] = owner;
                 tempKeyIds[count] = ownerKeys[j];
                 tempMintTimestamps[count] = ownerMintTimestamps[j];
+                // Increment the count
                 count++;
+                // If we've reached the max number of keys, break out of the loop
                 if (count >= maxKeys) {
                     break;
                 }
             }
         }
+        // Filter out empty values from the temporary arrays
         (ownerAddresses, keyIds, mintTimestamps) = filterEmptyValues(tempOwnerAddresses, tempKeyIds, tempMintTimestamps, count);
+
+        // Retrieve pools for the operator
         (pools) = getPoolsAsOwnerOperator(operator);
     }
 
@@ -158,9 +170,12 @@ contract OperatorReader is AccessControlUpgradeable {
      * @return filteredMintTimestamps The filtered array of mint timestamps.
      */
     function filterEmptyValues(address[] memory ownerAddresses, uint256[] memory keyIds, uint256[] memory mintTimestamps, uint256 count) public pure returns (address[] memory filteredOwnerAddresses, uint256[] memory filteredKeyIds, uint256[] memory filteredMintTimestamps) {
+        // Create new arrays with the correct sizes
         filteredOwnerAddresses = new address[](count);
         filteredKeyIds = new uint256[](count);
         filteredMintTimestamps = new uint256[](count);
+
+        // Copy the values from the temporary arrays to the new arrays
         for (uint256 i = 0; i < count; i++) {
             filteredOwnerAddresses[i] = ownerAddresses[i];
             filteredKeyIds[i] = keyIds[i];
@@ -174,7 +189,9 @@ contract OperatorReader is AccessControlUpgradeable {
      */
     function getLatestChallenge() public view returns (Referee9.Challenge memory challenge, uint256 latestChallenge) {
         Referee9 referee = Referee9(referenceContract);
+        // Get the latest challenge number
         latestChallenge = referee.challengeCounter();
+        // Get the latest challenge
         challenge = referee.getChallenge(latestChallenge);
     }
 
@@ -185,34 +202,69 @@ contract OperatorReader is AccessControlUpgradeable {
      */
     function getSpecificChallenge(uint256 challengeNumber) public view returns (Referee9.Challenge memory challenge) {
         Referee9 referee = Referee9(referenceContract);
+        // Get the specific challenge
         return referee.getChallenge(challengeNumber);
     }
     
     /**
      * @dev Retrieves unstaked keys for a specific owner.
      * @param owner The address of the owner.
+     * @param maxKeys The maximum number of keys to retrieve.
      * @return keyIds An array of unstaked key IDs.
      * @return mintTimestamps An array of mint timestamps for the unstaked keys.
      */
-    function getUnstakedKeysForOwner(address owner) public view returns (uint256[] memory keyIds, uint256[] memory mintTimestamps) {
+    function getUnstakedKeysForOwner(address owner, uint256 maxKeys) public view returns (uint256[] memory keyIds, uint256[] memory mintTimestamps) {
         Referee9 referee = Referee9(referenceContract);
         NodeLicense8 nodeLicense = NodeLicense8(nodeLicenseContract);
+
+        // Get the balance of the owner
         uint256 balance = nodeLicense.balanceOf(owner);
+
+        // Determine the maximum number of keys to retrieve
+        uint256 maxToRetrieve = balance < maxKeys ? balance : maxKeys;
+
+        // Create temporary arrays to store the values before filtering
         uint256[] memory tempKeyIds = new uint256[](balance);
         uint256[] memory tempMintTimestamps = new uint256[](balance);
+
+        // Initialize a count to keep track of the number of unstaked keys retrieved
         uint256 count = 0;
+
+        // Loop through each key and retrieve the unstaked keys
         for (uint256 i = 0; i < balance; i++) {
+
+            // Retrieve the owner's key Id(s)
             uint256 keyId = nodeLicense.tokenOfOwnerByIndex(owner, i);
+
+            // Retrieve the pool associated with the key
             address pool = referee.assignedKeyToPool(keyId);
+
+            // If the pool is not set, the key is unstaked
             if (pool == address(0)) {
+
+                // Retrieve the mint timestamp for the key
                 uint256 mintTimestamp = nodeLicense.getMintTimestamp(keyId);
+
+                // Add the key to the temporary arrays
                 tempKeyIds[i] = keyId;
                 tempMintTimestamps[i] = mintTimestamp;
+
+                // Increment the count
                 count++;
+
+                // If we've reached the max number of keys, break out of the loop
+                if (count >= maxToRetrieve) {
+                    break;
+                }
             }
         }
+
+        // Filter out empty values from the temporary arrays
+        // Start by creating new arrays with the correct sizes
         keyIds = new uint256[](count);
         mintTimestamps = new uint256[](count);
+
+        // Copy the values from the temporary arrays to the new arrays
         for (uint256 i = 0; i < count; i++) {
             keyIds[i] = tempKeyIds[i];
             mintTimestamps[i] = tempMintTimestamps[i];
@@ -226,6 +278,8 @@ contract OperatorReader is AccessControlUpgradeable {
      */
     function getPoolsAsOwnerOperator(address operator) public view returns (address[] memory poolAddresses) {
         PoolFactory2 poolFactory = PoolFactory2(stakePoolFactory);
+        
+        // Get the pool addresses for the operator
         poolAddresses = poolFactory.getPoolIndicesOfUser(operator);
     }
 }
