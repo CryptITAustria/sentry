@@ -122,9 +122,8 @@ contract OperatorReader is AccessControlUpgradeable {
      * @return keyIds An array of key IDs.
      * @return mintTimestamps An array of mint timestamps for each key.
      * @return pools An array of pool addresses.
-     * @return poolStakeAmounts An array of stake amounts for each pool.
      */
-    function getOperatorKeys(address operator) public view returns (address[] memory ownerAddresses, uint256[] memory keyIds, uint256[] memory mintTimestamps, address[] memory pools, uint256[] memory poolStakeAmounts) {
+    function getOperatorKeys(address operator) public view returns (address[] memory ownerAddresses, uint256[] memory keyIds, uint256[] memory mintTimestamps, address[] memory pools) {
         ownerAddresses = getAllOwnersForAnOperator(operator);
         uint256 count = 0;
         address[] memory tempOwnerAddresses = new address[](1000);
@@ -142,7 +141,7 @@ contract OperatorReader is AccessControlUpgradeable {
             }
         }
         (ownerAddresses, keyIds, mintTimestamps) = filterEmptyValues(tempOwnerAddresses, tempKeyIds, tempMintTimestamps, count);
-        (pools, poolStakeAmounts) = getPoolsAsOwnerOperator(operator);
+        (pools) = getPoolsAsOwnerOperator(operator);
     }
 
     /**
@@ -170,10 +169,10 @@ contract OperatorReader is AccessControlUpgradeable {
      * @dev Retrieves the latest challenge from the Referee contract.
      * @return challenge The latest Challenge struct.
      */
-    function getLatestChallenge() public view returns (Referee9.Challenge memory challenge) {
+    function getLatestChallenge() public view returns (Referee9.Challenge memory challenge, uint256 latestChallenge) {
         Referee9 referee = Referee9(referenceContract);
-        uint256 latestChallenge = referee.challengeCounter();
-        return referee.getChallenge(latestChallenge);
+        latestChallenge = referee.challengeCounter();
+        challenge = referee.getChallenge(latestChallenge);
     }
 
     /**
@@ -221,17 +220,9 @@ contract OperatorReader is AccessControlUpgradeable {
      * @dev Retrieves pools and their stake amounts for an owner-operator.
      * @param operator The address of the operator.
      * @return poolAddresses An array of pool addresses.
-     * @return poolStakeAmounts An array of stake amounts for each pool.
      */
-    function getPoolsAsOwnerOperator(address operator) public view returns (address[] memory poolAddresses, uint256[] memory poolStakeAmounts) {
-        Referee9 referee = Referee9(referenceContract);
+    function getPoolsAsOwnerOperator(address operator) public view returns (address[] memory poolAddresses) {
         PoolFactory2 poolFactory = PoolFactory2(stakePoolFactory);
         poolAddresses = poolFactory.getPoolIndicesOfUser(operator);
-        poolStakeAmounts = new uint256[](poolAddresses.length);
-
-        for (uint256 i = 0; i < poolAddresses.length; i++) {
-            address pool = poolAddresses[i];
-            poolStakeAmounts[i] = referee.stakedAmounts(pool);
-        }
     }
 }
