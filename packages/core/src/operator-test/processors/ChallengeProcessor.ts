@@ -77,14 +77,12 @@ export class ChallengeProcessor {
 
     /**
      * Processes a new challenge.
-     * @param {bigint} challengeNumber - The challenge number.
      * @param {Challenge} challenge - The challenge data.
-     */
+     */    
     async processNewChallenge(
-      challengeNumber: bigint,
       challenge: Challenge,
     ): Promise<void> {
-      this.log(`Processing new challenge with number: ${challengeNumber}.`);
+      this.log(`Processing new challenge with number: ${challenge.challengeNumber}.`);
       this.cachedBoostFactor = {};
 
       // Step 1: Refresh keys
