@@ -6,6 +6,7 @@ import { SentryWalletV2 } from '../types/index.js';
 
 /**
  * Facade class to abstract the interaction with Subgraph and RPC services.
+ * Operator classes do not need to care about the underlying service implementation.
  */
 export class SubgraphFacade extends SubgraphService {
   private rpcService: RPCService;

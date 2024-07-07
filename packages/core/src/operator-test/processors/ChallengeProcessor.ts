@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
-import { 
-  PublicNodeBucketInformation, 
+import {
+  PublicNodeBucketInformation,
   submitPoolAssertion,
   getSubmissionsForChallenges,
   claimRewardsBulk,
@@ -22,7 +22,7 @@ export class ChallengeProcessor {
     maxStakeAmountPerLicense: BigInt(0),
     maxKeysPerPool: BigInt(0),
     stakeAmountTierThresholds: [],
-    stakeAmountBoostFactors:  []
+    stakeAmountBoostFactors: []
   };
   private signer: ethers.Signer;
   private logFunction?: (log: string) => void;
@@ -41,114 +41,115 @@ export class ChallengeProcessor {
    * @param {Function} [logFunction] - Optional logging function.
    */
 
-    constructor(
-      signer: ethers.Signer,
-      subgraphFacade: SubgraphFacade,
-      onAssertionMissMatch: (publicNodeData: PublicNodeBucketInformation | undefined, challenge: Challenge, message: string) => void,    
-      logFunction?: (log: string) => void
-    ) {
-      this.signer = signer;
-      this.subgraphFacade = subgraphFacade;
-      this.logFunction = logFunction;
-      this.onAssertionMissMatch = onAssertionMissMatch;
+  constructor(
+    signer: ethers.Signer,
+    subgraphFacade: SubgraphFacade,
+    onAssertionMissMatch: (publicNodeData: PublicNodeBucketInformation | undefined, challenge: Challenge, message: string) => void,
+    logFunction?: (log: string) => void
+  ) {
+    this.signer = signer;
+    this.subgraphFacade = subgraphFacade;
+    this.logFunction = logFunction;
+    this.onAssertionMissMatch = onAssertionMissMatch;
+  }
+
+  /**
+   * Logs a message.
+   * @param {string} message - The message to log.
+   */
+  private log(message: string): void {
+    if (this.logFunction) {
+      this.logFunction(`[ChallengeProcessor] ${message}`);
+    }
+  }
+
+  /**
+   * Refreshes keys by fetching the latest data from the key manager.
+   * @private
+   */
+  private async _refreshKeys(): Promise<void> {
+    const operatorAddress = await this.signer.getAddress();
+    const { wallets, poolsOperated, refereeConfig } = await this.subgraphFacade.getOperatorKeys(operatorAddress);
+    this.wallets = wallets;
+    this.pools = poolsOperated;
+    this.refereeConfig = refereeConfig;
+  }
+
+  /**
+  * Processes a new challenge.
+  * @param {Challenge} challenge - The challenge data.
+  */
+  async processNewChallenge(
+    challenge: Challenge,
+  ): Promise<void> {
+    this.log(`Processing new challenge with number: ${challenge.challengeNumber}.`);
+    this.cachedBoostFactor = {};
+
+    // Step 1: Refresh keys
+    await this._refreshKeys();
+
+    // Step 2: Compare with CDN
+    const { publicNodeBucket, error } = await compareWithCDN(challenge, this.log.bind(this));
+    if (error) {
+      this.handleAssertionMissMatch(publicNodeBucket, challenge, error);
+      return;
     }
 
-    /**
-     * Logs a message.
-     * @param {string} message - The message to log.
-     */
-    private log(message: string): void {
-      if (this.logFunction) {
-        this.logFunction(`[ChallengeProcessor] ${message}`);
-      }
+    // Step 3: Process pool submissions
+    await this._processPoolSubmissions(challenge);
+
+    // Step 4: Process key submissions
+    await this._processKeySubmissions(challenge);
+
+    // Step 5: Process closed challenge
+    await this._processClosedChallenge(challenge.challengeNumber - 1n);
+  }
+
+
+  /**
+   * Processes a closed challenge.
+   * @param {bigint} challengeId - The challenge ID.
+   */
+  private async _processClosedChallenge(challengeId: bigint): Promise<void> {
+    // Get the previous challenge from the subgraph
+    const challenge = await this.subgraphFacade.getSpecificChallenge(challengeId);
+    if (!challenge) {
+      this.log(`Challenge ${challengeId} not found in the subgraph.`);
+      return;
     }
+    // Process the claims for the challenge
+    await this._handleKeyClaims(challenge);
+    await this._handlePoolClaims(challenge);
+    await this._processOldClaims(challengeId);
+  }
 
-    /**
-     * Refreshes keys by fetching the latest data from the key manager.
-     * @private
-     */
-    private async _refreshKeys(): Promise<void> {
-      const operatorAddress = await this.signer.getAddress(); 
-      const { wallets, poolsOperated, refereeConfig } = await this.subgraphFacade.getOperatorKeys(operatorAddress);
-      this.wallets = wallets;
-      this.pools = poolsOperated;
-      this.refereeConfig = refereeConfig;
-    }
-
-    /**
-     * Processes a new challenge.
-     * @param {Challenge} challenge - The challenge data.
-     */    
-    async processNewChallenge(
-      challenge: Challenge,
-    ): Promise<void> {
-      this.log(`Processing new challenge with number: ${challenge.challengeNumber}.`);
-      this.cachedBoostFactor = {};
-
-      // Step 1: Refresh keys
-      await this._refreshKeys();
-
-      // Step 2: Compare with CDN
-      const { publicNodeBucket, error } = await compareWithCDN(challenge, this.log.bind(this));
-      if (error) {
-        this.handleAssertionMissMatch(publicNodeBucket, challenge, error);
-        return;
-      }
-
-      // Step 3: Process pool submissions
-      await this._processPoolSubmissions(challenge);
-
-      // Step 4: Process key submissions
-      await this._processKeySubmissions(challenge);
-
-      // Step 5: Process closed challenge
-      await this._processClosedChallenge(challenge.challengeNumber - 1n);
-    }
-
-    /**
-     * Processes a closed challenge.
-     * @param {bigint} challengeId - The challenge ID.
-     */
-    private async _processClosedChallenge(challengeId: bigint): Promise<void> {
-      // Get the previous challenge from the subgraph
-      const challenge = await this.subgraphFacade.getSpecificChallenge(challengeId);
-      if (!challenge) {
-        this.log(`Challenge ${challengeId} not found in the subgraph.`);
-        return;
-      }
-      // Process the claims for the challenge
-      await this._handleKeyClaims(challenge);
-      await this._handlePoolClaims(challenge);
-      await this._processOldClaims(challengeId);
-    }
-
-    /**
-     * Handles claims for keys in a challenge.
-     * @param {Challenge} challenge - The challenge data.
-     * @private
-     */
-    private async _handleKeyClaims(challenge: Challenge): Promise<void> {   
-      const batchedClaimIds: bigint[] = [];
-      const keysPerBatch = 100;
-      // Loop through all wallets
-      for(const wallet of this.wallets) {
-        // Extract the sentry keys from the wallet (should only return un-staked keys)
-        const sentryKeys = wallet.sentryKeys;
-        // Loop through all sentry keys
-        for (const sentryKey of sentryKeys) {
-          // Check if the key is eligible for rewards
-          if (this._keyIsWinner(sentryKey, wallet, challenge)) {
-            // Add the key to the batched claim ids
-            batchedClaimIds.push(sentryKey.keyId);
-          }
+  /**
+   * Handles claims for keys in a challenge.
+   * @param {Challenge} challenge - The challenge data.
+   * @private
+   */
+  private async _handleKeyClaims(challenge: Challenge): Promise<void> {
+    const batchedClaimIds: bigint[] = [];
+    const keysPerBatch = 100;
+    // Loop through all wallets
+    for (const wallet of this.wallets) {
+      // Extract the sentry keys from the wallet (should only return un-staked keys)
+      const sentryKeys = wallet.sentryKeys;
+      // Loop through all sentry keys
+      for (const sentryKey of sentryKeys) {
+        // Check if the key is eligible for rewards
+        if (this._keyIsWinner(sentryKey, wallet, challenge)) {
+          // Add the key to the batched claim ids
+          batchedClaimIds.push(sentryKey.keyId);
         }
+      }
     }
 
     // Submit claims for the keys that are eligible for rewards
     if (batchedClaimIds.length) {
       //TODO Confirm this? What address should be used for claim batch?
       const claimForAddress = await this.signer.getAddress();
-      await claimRewardsBulk(batchedClaimIds, challenge.challengeNumber,  claimForAddress,  keysPerBatch, this.signer,this.log);
+      await claimRewardsBulk(batchedClaimIds, challenge.challengeNumber, claimForAddress, keysPerBatch, this.signer, this.log);
     }
   }
 
@@ -181,7 +182,7 @@ export class ChallengeProcessor {
       for (const claim of claims) {
         const { key, wallet } = claim;
         if (this._keyIsWinner(key, wallet, challenge)) {
-          batchClaimIds.push(key.keyId);          
+          batchClaimIds.push(key.keyId);
         }
       }
       if (batchClaimIds.length) {
@@ -200,7 +201,7 @@ export class ChallengeProcessor {
     const pendingClaims = new Map<bigint, PendingOldClaim[]>();
     const endingChallengeId = challengeId - 1n;
     // Loop through all wallets
-    for(let wallet of this.wallets){
+    for (let wallet of this.wallets) {
       // Extract the sentry keys from the wallet (should only return un-staked keys)
       const sentryKeys = wallet.sentryKeys;
       // Loop through all sentry keys
@@ -217,7 +218,7 @@ export class ChallengeProcessor {
               submission: submission,
               key: sentryKey,
               wallet: wallet
-            }); 
+            });
           }
         }
       }
@@ -302,15 +303,15 @@ export class ChallengeProcessor {
    * @param {bigint} stakedAmount - The staked amount.
    * @returns {bigint} - The boost factor.
    */
-  private getBoostFactor(stakedAmount: bigint): bigint  {
+  private getBoostFactor(stakedAmount: bigint): bigint {
     if (stakedAmount < this.refereeConfig.stakeAmountTierThresholds[0]) {
-        return BigInt(100);
+      return BigInt(100);
     }
 
     for (let tier = 1; tier < this.refereeConfig.stakeAmountTierThresholds.length; tier++) {
-        if (stakedAmount < this.refereeConfig.stakeAmountTierThresholds[tier]) {
-            return this.refereeConfig.stakeAmountBoostFactors[tier - 1];
-        }
+      if (stakedAmount < this.refereeConfig.stakeAmountTierThresholds[tier]) {
+        return this.refereeConfig.stakeAmountBoostFactors[tier - 1];
+      }
     }
     const lastIndex = this.refereeConfig.stakeAmountTierThresholds.length - 1;
     return this.refereeConfig.stakeAmountBoostFactors[lastIndex];
@@ -322,15 +323,15 @@ export class ChallengeProcessor {
    * @returns {bigint} - The calculated boost factor.
    */
   private calculateBoostFactor(sentryWallet: SentryWalletV2): bigint {
-      let stakeAmount = BigInt(sentryWallet.v1EsXaiStakeAmount);
-      let keyCount = BigInt(sentryWallet.keyCount) - BigInt(sentryWallet.stakedKeyCount);
+    let stakeAmount = BigInt(sentryWallet.v1EsXaiStakeAmount);
+    let keyCount = BigInt(sentryWallet.keyCount) - BigInt(sentryWallet.stakedKeyCount);
 
-      const maxStakeAmount = keyCount * BigInt(this.refereeConfig.maxStakeAmountPerLicense);
-      if (stakeAmount > maxStakeAmount) {
-          stakeAmount = maxStakeAmount;
-      }
+    const maxStakeAmount = keyCount * BigInt(this.refereeConfig.maxStakeAmountPerLicense);
+    if (stakeAmount > maxStakeAmount) {
+      stakeAmount = maxStakeAmount;
+    }
 
-      return this.getBoostFactor(stakeAmount);
+    return this.getBoostFactor(stakeAmount);
   }
 
   /**
@@ -439,7 +440,7 @@ export class ChallengeProcessor {
         if (await this._keyIsWinner(sentryKey, wallet, challenge)) {
           batchedWinnerKeys.push(sentryKey.keyId);
         }
-      } 
+      }
     }
 
     // Submit assertions for the keys that are eligible for rewards
