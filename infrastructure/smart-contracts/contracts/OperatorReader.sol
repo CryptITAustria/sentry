@@ -224,8 +224,8 @@ contract OperatorReader is AccessControlUpgradeable {
         uint256 maxToRetrieve = balance < maxKeys ? balance : maxKeys;
 
         // Create temporary arrays to store the values before filtering
-        uint256[] memory tempKeyIds = new uint256[](balance);
-        uint256[] memory tempMintTimestamps = new uint256[](balance);
+        uint256[] memory tempKeyIds = new uint256[](maxToRetrieve);
+        uint256[] memory tempMintTimestamps = new uint256[](maxToRetrieve);
 
         // Initialize a count to keep track of the number of unstaked keys retrieved
         uint256 count = 0;
