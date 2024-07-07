@@ -50,7 +50,7 @@ export class ChallengeListener {
         // Process the new challenge if it is newer than the last processed challenge
         if (lastProcessedChallengeNumber === null || latestChallenge.challengeNumber > lastProcessedChallengeNumber) {
           this.log('info', `New challenge detected: ${latestChallenge.challengeNumber}`);
-          await this.challengeProcessor.processNewChallenge(latestChallenge.challengeNumber, latestChallenge);
+          await this.challengeProcessor.processNewChallenge(latestChallenge);
           lastProcessedChallengeNumber = latestChallenge.challengeNumber;
         }
       } catch (error) {
