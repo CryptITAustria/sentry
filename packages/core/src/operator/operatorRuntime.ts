@@ -205,6 +205,7 @@ async function processNewChallenge(
 
     let nonWinnerKeysCount = 0;
 
+    
     for (const nodeLicenseId of nodeLicenseIds) {
 
         const sentryKey = sentryKeysMap[nodeLicenseId.toString()];
