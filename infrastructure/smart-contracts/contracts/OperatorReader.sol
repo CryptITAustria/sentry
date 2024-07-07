@@ -119,9 +119,9 @@ contract OperatorReader is AccessControlUpgradeable {
      * @dev Retrieves operator keys and associated information.
      * @param operator The address of the operator.
      * @return ownerAddresses An array of owner addresses.
-     * @return keyIds An array of key IDs.
-     * @return mintTimestamps An array of mint timestamps for each key.
-     * @return pools An array of pool addresses.
+     * @return keyIds An array of un-staked key IDs owned by the corresponding owner in the ownerAddresses array.
+     * @return mintTimestamps An array of mint timestamps for each key in the keyIds array.
+     * @return pools An array of pool addresses associated with the operator.
      */
     function getOperatorKeys(address operator, uint256 maxKeys) public view returns (address[] memory ownerAddresses, uint256[] memory keyIds, uint256[] memory mintTimestamps, address[] memory pools) {
        ownerAddresses = getAllOwnersForAnOperator(operator);
