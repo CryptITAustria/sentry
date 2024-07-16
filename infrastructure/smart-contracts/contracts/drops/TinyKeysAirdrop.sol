@@ -137,7 +137,7 @@ contract TinyKeysAirdrop is Initializable, AccessControlUpgradeable {
             uint256 startKeyId = keyToStartEnd[keyId][0];
             uint256 endKeyId = keyToStartEnd[keyId][1];
 
-            require(endKeyId > startKeyId, "Invalid input");
+            require(endKeyId >= startKeyId, "Invalid input");
 
             Referee9 referee = Referee9(refereeAddress);
             address owner = NodeLicense8(nodeLicenseAddress).ownerOf(keyId);
