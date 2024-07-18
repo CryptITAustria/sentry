@@ -42,30 +42,23 @@ function ModelAirdropGasCostsForMaxTx(deployInfrastructure) {
 
             expect(addr1BalanceBeforeAirdrop).to.equal(401);
             expect(keysStakedBeforeAirdrop).to.equal(400);
-            console.log("Address Balance Before Airdrop: ", addr1BalanceBeforeAirdrop.toString());
 
             // Start Airdrop
             await tinyKeysAirDrop.connect(deployer).startAirdrop();
-            console.log("Airdrop Started");
-            const qtyToMint = 10;
-            const qtyToStake = 10;
-            const totalSupplyAtStart = await tinyKeysAirDrop.totalSupplyAtStart();
+            const qtyToMint = 38;
+            const qtyToStake = 40;
             const mintTx = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
-            console.log("Mint Transaction Sent");
             const mintReceipt = await mintTx.wait(1);
             console.log("Mint Gas Used: ", mintReceipt.gasUsed.toString());
 
             let keyIdsToStake = [];
 
-            for (let i = Number(totalSupplyAtStart); i <  Number(totalSupplyAtStart) + qtyToMint-1; i++) {
-                console.log("i: ", i);
-                console.log("totalSupplyAtStart: ", totalSupplyAtStart);
-                keyIdsToStake.push(Number(totalSupplyAtStart) + i);
-                console.log("2: ", i);
+            for (let i = 0; i <  qtyToStake; i++) {
+                const keyIdToAdd = i + 1;
+                keyIdsToStake.push(keyIdToAdd);
             }
-            console.log("444: ");
 
-
+            console.log("Key Ids to stake: ", keyIdsToStake.length);
             const stakeTx = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyStake(keyIdsToStake);
             const stakeReceipt = await stakeTx.wait(1);
             console.log("Stake Gas Used: ", stakeReceipt.gasUsed.toString());
