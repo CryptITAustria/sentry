@@ -318,7 +318,7 @@ describe("Fixture Tests", function () {
         const rollupController = await ethers.getImpersonatedSigner("0x6347446605e6f6680addb7c4ff55da299ecd2e69");
         // Tiny Keys AirDrop
         const TinyKeysAirdrop = await ethers.getContractFactory("TinyKeysAirdrop");
-        const airdropMultiplier = BigInt(5);
+        const airdropMultiplier = BigInt(49);
         const tinyKeysAirDrop = await upgrades.deployProxy(TinyKeysAirdrop, [await nodeLicense.getAddress(), await referee.getAddress(), await poolFactory.getAddress(), airdropMultiplier]);
         await tinyKeysAirDrop.waitForDeployment();
 

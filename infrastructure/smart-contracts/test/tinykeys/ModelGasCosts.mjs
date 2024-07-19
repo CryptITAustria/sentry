@@ -13,7 +13,7 @@ function ModelAirdropGasCostsForMaxTx(deployInfrastructure) {
             const { poolFactory, addr1, nodeLicense, referee, challenger, tinyKeysAirDrop, deployer } = await loadFixture(deployInfrastructure);
 
             // Mint Node Licenses
-            const addr1MintedKeyIds = await mintBatchedLicenses(400n, nodeLicense, addr1);
+            const addr1MintedKeyIds = await mintBatchedLicenses(5n, nodeLicense, addr1);
             const keyToStart = [addr1MintedKeyIds[0]];
             
             const challengeId = 0;
@@ -29,26 +29,46 @@ function ModelAirdropGasCostsForMaxTx(deployInfrastructure) {
             const stakingPoolAddress = await createPool(poolFactory, addr1, keyToStart);
 
             // Split the remaining keys into 2 batches
-            const keyBatch1 = addr1MintedKeyIds.slice(1, 200);
-            const keyBatch2 = addr1MintedKeyIds.slice(200, 400);
+            const keyBatch1 = addr1MintedKeyIds.slice(1, 5);
+            //const keyBatch2 = addr1MintedKeyIds.slice(200, 400);
 
             // Stake the key bathes into the pool
             await poolFactory.connect(addr1).stakeKeys(stakingPoolAddress, keyBatch1);
-            await poolFactory.connect(addr1).stakeKeys(stakingPoolAddress, keyBatch2);
 
             // Confirm Address balance and staked balance before airdrop
             const addr1BalanceBeforeAirdrop = await nodeLicense.balanceOf(await addr1.getAddress());
             const keysStakedBeforeAirdrop = await referee.assignedKeysToPoolCount(stakingPoolAddress);
 
-            expect(addr1BalanceBeforeAirdrop).to.equal(401);
-            expect(keysStakedBeforeAirdrop).to.equal(400);
+            expect(addr1BalanceBeforeAirdrop).to.equal(6);
+            expect(keysStakedBeforeAirdrop).to.equal(5);
 
             // Start Airdrop
             await tinyKeysAirDrop.connect(deployer).startAirdrop();
-            const qtyToMint = 38;
-            const qtyToStake = 40;
+            const qtyToMint = 3;
+            const qtyToStake = 18;
             const mintTx = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
             const mintReceipt = await mintTx.wait(1);
+            const mintTx1 = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
+            const mintReceipt1 = await mintTx1.wait(1);
+            const mintTx2 = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
+            const mintReceipt2 = await mintTx2.wait(1);
+            const mintTx3 = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
+            const mintReceipt3 = await mintTx3.wait(1);
+            const mintTx4 = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
+            const mintReceipt4 = await mintTx4.wait(1);
+            const mintTx5 = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
+            const mintReceipt5 = await mintTx5.wait(1);
+            const mintTx6 = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
+            const mintReceipt6 = await mintTx6.wait(1);
+            const mintTx7 = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
+            const mintReceipt7 = await mintTx7.wait(1);
+            const mintTx8 = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
+            const mintReceipt8 = await mintTx8.wait(1);
+            const mintTx9 = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
+            const mintReceipt9 = await mintTx9.wait(1);
+            const mintTx10 = await tinyKeysAirDrop.connect(deployer).processAirdropSegmentOnlyMint(qtyToMint);
+            const mintReceipt10 = await mintTx10.wait(1);
+
             console.log("Mint Gas Used: ", mintReceipt.gasUsed.toString());
 
             let keyIdsToStake = [];
