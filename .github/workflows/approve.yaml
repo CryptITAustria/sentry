@@ -1,0 +1,15 @@
+name: on-pr-approve
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  build:
+    if: github.event.review.state == 'approved'
+    runs-on: self-hosted
+    steps:
+      - name: deploy-apps
+        shell: bash
+        run: |
+          docker run --name pr-approve hello-world

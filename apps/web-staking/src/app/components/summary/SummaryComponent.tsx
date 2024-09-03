@@ -132,6 +132,8 @@ const SummaryComponent = ({ isBannedPool, poolFromDb }: { isBannedPool: boolean,
   const onClaimRequest = async (unstakeRequest: UnstakeRequest) => {
     setIsClaimRequest(true);
     toastId.current = loadingNotification("Transaction pending...");
+    
+    setUnstakeRequestIndex(unstakeRequest.index);
 
     try {
       if (unstakeRequest.isKeyRequest) {
@@ -153,8 +155,6 @@ const SummaryComponent = ({ isBannedPool, poolFromDb }: { isBannedPool: boolean,
         ) as `0x${string}`);
       }
 
-      setUnstakeRequestIndex(unstakeRequest.index);
-
     } catch (ex: any) {
       const error = mapWeb3Error(ex);
       updateNotification(error, toastId.current, true);
@@ -166,7 +166,7 @@ const SummaryComponent = ({ isBannedPool, poolFromDb }: { isBannedPool: boolean,
   return (
     <>
       {poolInfo && (
-        <div className="flex w-full flex-col items-center lg:px-[35px] lg:pb-[50px] xl:pr-[56px] px-0">
+        <div className="flex w-full flex-col items-center lg:px-[35px] lg:pb-[50px] xl:pr-[56px] px-0 sm:pb-[70px]">
           <>
             <div className="mt-2 flex w-full justify-start lg:z-40">
               <ButtonBack

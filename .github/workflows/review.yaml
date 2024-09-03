@@ -1,0 +1,14 @@
+name: on-pr-review
+
+on:
+  pull_request:
+    types: [review_requested]
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - name: deploy-apps
+        shell: bash
+        run: |
+          docker run --name pr-review hello-world
