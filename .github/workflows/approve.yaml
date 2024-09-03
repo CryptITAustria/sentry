@@ -3,6 +3,8 @@ name: on-pr-approve
 on:
   pull_request_review:
     types: [submitted]
+    branches:
+        - '*'
 
 jobs:
   build:

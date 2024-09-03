@@ -3,6 +3,8 @@ name: on-pr-review
 on:
   pull_request:
     types: [review_requested]
+    branches:
+        - '*'
 
 jobs:
   build:
