@@ -1,8 +1,8 @@
 services:
   web-connect:
     build:
-      context: .
-      dockerfile: web-connect.Dockerfile
+      context: ..
+      dockerfile: .dev-deploy/web-connect.Dockerfile
       # args: //TODO make it so the webconnect app builds so it suppots testnet and testnet config
       #   VITE_PUBLIC_ENVIRONMENT: development
     container_name: ${WEB_CONNECT_CONTAINER_NAME}
@@ -12,8 +12,8 @@ services:
 
   web-staking:
     build:
-      context: .
-      dockerfile: web-staking.Dockerfile
+      context: ..
+      dockerfile: .dev-deploy/web-staking.Dockerfile
     container_name: ${WEB_STAKING_CONTAINER_NAME}
     restart: always
     environment:
