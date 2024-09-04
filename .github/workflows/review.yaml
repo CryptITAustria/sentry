@@ -6,8 +6,14 @@ on:
     branches:
       - "*"
 
+  pull_request_review:
+    types: [submitted]
+    branches:
+        - '*'
+
 jobs:
   build:
+    if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved'
     runs-on: self-hosted
 
     steps:
