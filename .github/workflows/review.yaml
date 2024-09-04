@@ -23,8 +23,7 @@ jobs:
         run: |
           echo "WEB_CONNECT_CONTAINER_NAME=web-connect-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
           echo "WEB_STAKING_CONTAINER_NAME=web-staking-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-          pwd
-          ls -al
+
 
       - name: Check if containers exist and remove them
         run: |
@@ -43,12 +42,19 @@ jobs:
       # Step 3: Build web-connect and web-staking services using docker compose
       - name: Build Docker services
         run: |
-          docker compose -f .dev-deploy/docker-compose.yml build
+          cd .dev-deploy
+          pwd
+          ls -al
+          docker compose build
 
       # Step 4: Spin up containers with dynamic environment variables
       - name: Run Docker containers for PR review
         run: |
-          docker compose -f .dev-deploy/docker-compose.yml up -d \
+          pwd
+          cd .dev-deploy
+          pwd
+          ls -al
+          docker compose up -d \
             --build \
             -e MONGODB_URL=${{ secrets.MONGODB_URL }} \
             -e NEXT_PUBLIC_APP_ENV=development \
