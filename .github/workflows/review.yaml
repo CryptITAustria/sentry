@@ -24,7 +24,7 @@ jobs:
           echo "WEB_CONNECT_CONTAINER_NAME=web-connect-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
           echo "WEB_STAKING_CONTAINER_NAME=web-staking-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
           pwd
-          ll
+          ls -al
 
       - name: Check if containers exist and remove them
         run: |
