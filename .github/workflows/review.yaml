@@ -42,14 +42,11 @@ jobs:
 
       - name: Run web-connect container
         run: |
-          docker compose -f .dev-deploy/docker-compose.yml run \
-            -e WEB_CONNECT_CONTAINER_NAME=${{ env.WEB_CONNECT_CONTAINER_NAME }} \
-            web-connect
+          docker compose -f .dev-deploy/docker-compose.yml run -d --name ${{ env.WEB_CONNECT_CONTAINER_NAME }} web-connect
 
       - name: Run web-staking container
         run: |
-          docker compose -f .dev-deploy/docker-compose.yml run \
-            -e WEB_STAKING_CONTAINER_NAME=${{ env.WEB_STAKING_CONTAINER_NAME }} \
+          docker compose -f .dev-deploy/docker-compose.yml run -d --name ${{ env.WEB_STAKING_CONTAINER_NAME }} \
             -e NEXT_PUBLIC_APP_ENV=development \
             -e MONGODB_URL=${{ secrets.MONGODB_URL }} \
             web-staking
